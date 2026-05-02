@@ -1,9 +1,10 @@
 {
   "expo": {
-    "name": "scaffold-tmp",
-    "slug": "scaffold-tmp",
-    "version": "1.0.0",
-    "orientation": "portrait",
+    "name": "JPrime Fitness Kiosk",
+    "slug": "jprimefitness-kiosk",
+    "scheme": "jprimekiosk",
+    "version": "0.1.0",
+    "orientation": "landscape",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -13,18 +14,46 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Required to scan member QR codes for time-in and time-out."
+      }
     },
     "android": {
+      "package": "ph.jprimefitness.kiosk",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["android.permission.CAMERA"]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow JPrime Kiosk to access your camera to scan member QR codes."
+        }
+      ],
+      [
+        "expo-screen-orientation",
+        {
+          "initialOrientation": "LANDSCAPE"
+        }
+      ]
+    ],
+    "extra": {
+      "apiBaseUrl": "http://localhost:8000",
+      "kioskToken": "3089147bac7b162e3ca760dd5bcd4e939873b6fd689a2018",
+      "mockApi": false,
+      "idleTimeoutMs": 60000,
+      "paymentTimeoutSec": 60
     }
   }
 }
