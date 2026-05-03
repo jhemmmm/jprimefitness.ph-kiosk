@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { forwardRef, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -34,6 +34,7 @@ export default function WalkInFormScreen() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [errors, setErrors] = useState<{ name?: string; phone?: string }>({});
+  const phoneRef = useRef<TextInput>(null);
 
   const onContinue = () => {
     const parsed = schema.safeParse({ name, phone });
@@ -56,11 +57,14 @@ export default function WalkInFormScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
       >
         <ScrollView
           contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
             <BrandHeader size="md" />
@@ -79,14 +83,20 @@ export default function WalkInFormScreen() {
               placeholder="Juan Dela Cruz"
               error={errors.name}
               autoCapitalize="words"
+              returnKeyType="next"
+              onSubmitEditing={() => phoneRef.current?.focus()}
+              blurOnSubmit={false}
             />
             <Field
+              ref={phoneRef}
               label="Contact Number"
               value={phone}
               onChange={setPhone}
               placeholder="09171234567"
               error={errors.phone}
               keyboardType="phone-pad"
+              returnKeyType="done"
+              onSubmitEditing={onContinue}
             />
           </View>
 
@@ -119,21 +129,31 @@ type FieldProps = {
   error?: string;
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   keyboardType?: 'default' | 'phone-pad' | 'email-address';
+  returnKeyType?: 'next' | 'done' | 'go';
+  onSubmitEditing?: () => void;
+  blurOnSubmit?: boolean;
 };
 
-function Field({
-  label,
-  value,
-  onChange,
-  placeholder,
-  error,
-  autoCapitalize,
-  keyboardType,
-}: FieldProps) {
+const Field = forwardRef<TextInput, FieldProps>(function Field(
+  {
+    label,
+    value,
+    onChange,
+    placeholder,
+    error,
+    autoCapitalize,
+    keyboardType,
+    returnKeyType,
+    onSubmitEditing,
+    blurOnSubmit,
+  },
+  ref,
+) {
   return (
     <Pressable style={styles.fieldWrap} onPress={() => {}}>
       <Text style={styles.fieldLabel}>{label}</Text>
       <TextInput
+        ref={ref}
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
@@ -142,17 +162,22 @@ function Field({
         autoCapitalize={autoCapitalize}
         keyboardType={keyboardType}
         autoCorrect={false}
+        returnKeyType={returnKeyType}
+        onSubmitEditing={onSubmitEditing}
+        blurOnSubmit={blurOnSubmit}
       />
       {error ? <Text style={styles.fieldError}>{error}</Text> : null}
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.white },
   container: {
-    paddingHorizontal: spacing.xxl,
-    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.lg,
+    flexGrow: 1,
+    justifyContent: 'center',
   },
   header: {
     alignItems: 'center',

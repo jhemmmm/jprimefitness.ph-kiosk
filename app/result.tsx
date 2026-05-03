@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CheckIcon, CrossIcon } from '@/components/icons';
@@ -9,6 +9,7 @@ import {
   AttendanceResponse,
   postAttendance,
 } from '@/lib/kiosk';
+import { config } from '@/lib/config';
 import { colors, radius, spacing, typography } from '@/theme';
 
 type Status = 'success' | 'failed';
@@ -18,7 +19,7 @@ type PaymentStatusParam = 'pending' | 'paid' | 'timeout' | 'cancelled';
 
 type Params = {
   flow: Flow;
-  status: Status;
+  status?: Status;
   // walk_in
   name?: string;
   phone?: string;
@@ -34,16 +35,34 @@ type Params = {
 
 export default function ResultScreen() {
   const params = useLocalSearchParams<Params>();
-  const status: Status = params.status === 'success' ? 'success' : 'failed';
   const flow: Flow = params.flow === 'member' ? 'member' : 'walk_in';
 
   const [posting, setPosting] = useState(true);
   const [postError, setPostError] = useState<string | null>(null);
   const [response, setResponse] = useState<AttendanceResponse | null>(null);
+  const [remaining, setRemaining] = useState(config.resultDisplaySec);
+  const postedRef = useRef(false);
 
   useEffect(() => {
+    if (posting) return;
+    setRemaining(config.resultDisplaySec);
+    const tick = setInterval(() => {
+      setRemaining((r) => Math.max(0, r - 1));
+    }, 1000);
+    const done = setTimeout(() => {
+      router.replace('/');
+    }, config.resultDisplaySec * 1000);
+    return () => {
+      clearInterval(tick);
+      clearTimeout(done);
+    };
+  }, [posting]);
+
+  useEffect(() => {
+    if (postedRef.current) return;
+    postedRef.current = true;
     let cancelled = false;
-    const payload = buildPayload(params, flow, status);
+    const payload = buildPayload(params, flow);
     postAttendance(payload)
       .then((r) => {
         if (!cancelled) {
@@ -59,31 +78,54 @@ export default function ResultScreen() {
     return () => {
       cancelled = true;
     };
-  }, [params, flow, status]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  const status: Status =
+    flow === 'member'
+      ? response?.ok
+        ? 'success'
+        : posting
+          ? 'success'
+          : 'failed'
+      : params.status === 'success'
+        ? 'success'
+        : 'failed';
   const isSuccess = status === 'success';
 
-  const headline = isSuccess ? 'ACCESS GRANTED' : 'ACCESS DENIED';
+  const headline = posting
+    ? 'VERIFYING…'
+    : isSuccess
+      ? 'ACCESS GRANTED'
+      : 'ACCESS DENIED';
   const memberName = response?.member_name;
-  const subline = buildSubline({ flow, status, params, memberName });
+  const subline = buildSubline({ flow, status, params, memberName, posting, response });
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.container}>
         <Text style={styles.title}>{headline}</Text>
 
-        <View
-          style={[
-            styles.badge,
-            { backgroundColor: isSuccess ? colors.success : colors.danger },
-          ]}
-        >
-          {isSuccess ? (
-            <CheckIcon size={72} color={colors.white} />
-          ) : (
-            <CrossIcon size={72} color={colors.white} />
-          )}
-        </View>
+        {posting && flow === 'member' ? (
+          <View
+            style={[styles.badge, { backgroundColor: colors.surfaceMuted }]}
+          >
+            <ActivityIndicator color={colors.crimson} size="large" />
+          </View>
+        ) : (
+          <View
+            style={[
+              styles.badge,
+              { backgroundColor: isSuccess ? colors.success : colors.danger },
+            ]}
+          >
+            {isSuccess ? (
+              <CheckIcon size={56} color={colors.white} />
+            ) : (
+              <CrossIcon size={56} color={colors.white} />
+            )}
+          </View>
+        )}
 
         <Text style={styles.welcome}>{subline.primary}</Text>
         {subline.secondary ? (
@@ -100,7 +142,9 @@ export default function ResultScreen() {
         ) : null}
 
         <PrimaryButton
-          label="Back to Home"
+          label={
+            posting ? 'Back to Home' : `Back to Home (${remaining})`
+          }
           onPress={() => router.replace('/')}
           style={styles.cta}
         />
@@ -109,23 +153,15 @@ export default function ResultScreen() {
   );
 }
 
-function buildPayload(
-  p: Params,
-  flow: Flow,
-  status: Status,
-): AttendancePayload {
-  const occurred_at = new Date().toISOString();
+function buildPayload(p: Params, flow: Flow): AttendancePayload {
   if (flow === 'member') {
-    const reason = p.reason === 'unknown_qr' ? 'unknown_qr' : null;
     return {
       type: 'member',
-      status,
       action: (p.action as MemberAction) ?? 'time_in',
       qr_payload: p.qr_payload ?? '',
-      reason,
-      occurred_at,
     };
   }
+  const status: Status = p.status === 'success' ? 'success' : 'failed';
   return {
     type: 'walk_in',
     status,
@@ -134,7 +170,6 @@ function buildPayload(
     payment_method: p.method ?? 'online',
     payment_status: p.payment_status ?? 'paid',
     payment_reference: p.payment_reference ? p.payment_reference : null,
-    occurred_at,
   };
 }
 
@@ -143,9 +178,14 @@ function buildSubline(args: {
   status: Status;
   params: Params;
   memberName?: string;
+  posting: boolean;
+  response: AttendanceResponse | null;
 }): { primary: string; secondary?: string } {
-  const { flow, status, params, memberName } = args;
+  const { flow, status, params, memberName, posting, response } = args;
   if (flow === 'member') {
+    if (posting) {
+      return { primary: 'Verifying QR code…' };
+    }
     if (status === 'success') {
       const verb = params.action === 'time_out' ? 'Goodbye' : 'Welcome back';
       const who = memberName ?? 'member';
@@ -158,7 +198,7 @@ function buildSubline(args: {
       };
     }
     return {
-      primary: 'QR code not recognized',
+      primary: response?.message ?? 'QR code not recognized',
       secondary: 'Please ask the front desk for assistance.',
     };
   }
@@ -195,15 +235,15 @@ const styles = StyleSheet.create({
     color: colors.ink,
     textAlign: 'center',
     fontWeight: '900',
-    fontSize: 44,
+    fontSize: 32,
   },
   badge: {
-    width: 120,
-    height: 120,
+    width: 96,
+    height: 96,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: spacing.xl,
+    marginVertical: spacing.lg,
   },
   welcome: {
     ...typography.h2,
@@ -232,8 +272,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   cta: {
-    marginTop: spacing.xl,
-    minWidth: 320,
+    marginTop: spacing.lg,
+    minWidth: 240,
     backgroundColor: colors.crimsonDark,
   },
 });

@@ -12,10 +12,14 @@
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
     "@hookform/resolvers": "^5.2.2",
+    "@react-native-async-storage/async-storage": "2.2.0",
     "expo": "~54.0.33",
     "expo-camera": "~17.0.10",
     "expo-constants": "~18.0.13",
+    "expo-keep-awake": "~15.0.8",
     "expo-linking": "~8.0.12",
+    "expo-navigation-bar": "~5.0.10",
+    "expo-network": "~8.0.8",
     "expo-router": "~6.0.23",
     "expo-screen-orientation": "~9.0.9",
     "expo-status-bar": "~3.0.9",
@@ -37,5 +41,12 @@
     "@types/react": "~19.1.0",
     "typescript": "~5.9.2"
   },
-  "private": true
+  "private": true,
+  "expo": {
+    "autolinking": {
+      "searchPaths": [
+        "./modules"
+      ]
+    }
+  }
 }

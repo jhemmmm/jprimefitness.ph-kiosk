@@ -22,15 +22,15 @@ export default function HomeScreen() {
           <PrimaryCard
             title="Walk-In"
             subtitle="One-time Entry"
-            icon={<WalkInIcon size={72} />}
+            icon={<WalkInIcon size={48} />}
             onPress={() => router.push('/walk-in/form')}
             testID="card-walk-in"
           />
-          <View style={{ width: spacing.xl }} />
+          <View style={{ width: spacing.lg }} />
           <PrimaryCard
             title="Membership"
             subtitle="Member Face Verification"
-            icon={<MembershipIcon size={72} />}
+            icon={<MembershipIcon size={48} />}
             onPress={() => router.push('/member/action')}
             testID="card-membership"
           />
@@ -51,30 +51,31 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    paddingHorizontal: spacing.xxl,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.xl,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
+    justifyContent: 'center',
   },
   header: {
     alignItems: 'center',
-    marginTop: spacing.lg,
   },
   subtitle: {
     ...typography.body,
     color: colors.ink,
     textAlign: 'center',
-    marginTop: spacing.xl,
-    marginBottom: spacing.xl,
+    marginTop: spacing.lg,
+    marginBottom: spacing.lg,
   },
   cards: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'stretch',
+    justifyContent: 'center',
+    alignSelf: 'stretch',
   },
   footer: {
     ...typography.caps,
     color: colors.ink,
     textAlign: 'center',
-    marginTop: spacing.xl,
+    marginTop: spacing.lg,
   },
 });

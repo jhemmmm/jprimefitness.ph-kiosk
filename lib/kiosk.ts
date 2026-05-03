@@ -16,16 +16,12 @@ export type WalkInPayload = {
   payment_method: 'counter' | 'online';
   payment_status: 'pending' | 'paid' | 'timeout' | 'cancelled';
   payment_reference: string | null;
-  occurred_at: string;
 };
 
 export type MemberPayload = {
   type: 'member';
-  status: 'success' | 'failed';
   action: 'time_in' | 'time_out';
   qr_payload: string;
-  reason: 'unknown_qr' | 'expired' | null;
-  occurred_at: string;
 };
 
 export type AttendancePayload = WalkInPayload | MemberPayload;
@@ -67,8 +63,8 @@ export async function pollPayment(reference: string): Promise<PaymentStatus> {
 function mockAttendance(p: AttendancePayload): Promise<AttendanceResponse> {
   return delay(200).then(() => {
     if (p.type === 'member') {
-      const known = /JPRIME:MEMBER:(\w+)/.exec(p.qr_payload);
-      if (p.status === 'success' && known) {
+      const known = /^JPRIME:(.+)/.exec(p.qr_payload);
+      if (known) {
         return {
           ok: true,
           attendance_id: Math.floor(Math.random() * 100000),

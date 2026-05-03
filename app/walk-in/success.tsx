@@ -1,10 +1,11 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CheckIcon } from '@/components/icons';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { postAttendance } from '@/lib/kiosk';
+import { config } from '@/lib/config';
 import { colors, radius, spacing, typography } from '@/theme';
 
 export default function CounterSuccessScreen() {
@@ -14,8 +15,27 @@ export default function CounterSuccessScreen() {
   }>();
   const [posting, setPosting] = useState(true);
   const [postError, setPostError] = useState<string | null>(null);
+  const [remaining, setRemaining] = useState(config.resultDisplaySec);
+  const postedRef = useRef(false);
 
   useEffect(() => {
+    if (posting) return;
+    setRemaining(config.resultDisplaySec);
+    const tick = setInterval(() => {
+      setRemaining((r) => Math.max(0, r - 1));
+    }, 1000);
+    const done = setTimeout(() => {
+      router.replace('/');
+    }, config.resultDisplaySec * 1000);
+    return () => {
+      clearInterval(tick);
+      clearTimeout(done);
+    };
+  }, [posting]);
+
+  useEffect(() => {
+    if (postedRef.current) return;
+    postedRef.current = true;
     let cancelled = false;
     postAttendance({
       type: 'walk_in',
@@ -25,7 +45,6 @@ export default function CounterSuccessScreen() {
       payment_method: 'counter',
       payment_status: 'pending',
       payment_reference: null,
-      occurred_at: new Date().toISOString(),
     })
       .then(() => {
         if (!cancelled) setPosting(false);
@@ -38,7 +57,8 @@ export default function CounterSuccessScreen() {
     return () => {
       cancelled = true;
     };
-  }, [name, phone]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -46,7 +66,7 @@ export default function CounterSuccessScreen() {
         <Text style={styles.title}>PROCEED TO THE COUNTER</Text>
 
         <View style={styles.badge}>
-          <CheckIcon size={72} color={colors.white} />
+          <CheckIcon size={56} color={colors.white} />
         </View>
 
         <Text style={styles.message}>
@@ -64,7 +84,9 @@ export default function CounterSuccessScreen() {
         ) : null}
 
         <PrimaryButton
-          label="Back to Home"
+          label={
+            posting ? 'Back to Home' : `Back to Home (${remaining})`
+          }
           onPress={() => router.replace('/')}
           style={styles.cta}
         />
@@ -89,13 +111,13 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   badge: {
-    width: 120,
-    height: 120,
+    width: 96,
+    height: 96,
     borderRadius: radius.pill,
     backgroundColor: colors.success,
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: spacing.xl,
+    marginVertical: spacing.lg,
   },
   message: {
     ...typography.h2,
@@ -119,8 +141,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   cta: {
-    marginTop: spacing.xl,
-    minWidth: 320,
+    marginTop: spacing.lg,
+    minWidth: 240,
     backgroundColor: colors.crimsonDark,
   },
 });

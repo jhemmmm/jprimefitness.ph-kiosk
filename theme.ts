@@ -22,42 +22,42 @@ export const radius = {
 export const spacing = {
   xs: 4,
   sm: 8,
-  md: 16,
-  lg: 24,
-  xl: 32,
-  xxl: 48,
+  md: 12,
+  lg: 18,
+  xl: 24,
+  xxl: 32,
 };
 
 export const typography = {
   brand: {
-    fontSize: 88,
+    fontSize: 56,
     fontWeight: '900' as const,
     letterSpacing: -2,
   },
   hero: {
-    fontSize: 56,
+    fontSize: 40,
     fontWeight: '800' as const,
   },
   h1: {
-    fontSize: 36,
+    fontSize: 26,
     fontWeight: '800' as const,
   },
   h2: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '700' as const,
   },
   body: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '400' as const,
   },
   caption: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '400' as const,
   },
   caps: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '800' as const,
-    letterSpacing: 2,
+    letterSpacing: 1.5,
     textTransform: 'uppercase' as const,
   },
 };

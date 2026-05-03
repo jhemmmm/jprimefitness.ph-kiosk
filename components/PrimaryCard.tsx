@@ -21,10 +21,21 @@ export function PrimaryCard({ title, subtitle, icon, onPress, testID }: Props) {
       ]}
     >
       <View style={styles.titleRow}>
-        <Text style={styles.title}>{title}</Text>
         {icon ? <View style={styles.iconWrap}>{icon}</View> : null}
+        <Text
+          style={styles.title}
+          numberOfLines={2}
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
+        >
+          {title}
+        </Text>
       </View>
-      {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+      {subtitle ? (
+        <Text style={styles.subtitle} numberOfLines={2}>
+          {subtitle}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
@@ -32,11 +43,13 @@ export function PrimaryCard({ title, subtitle, icon, onPress, testID }: Props) {
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    minHeight: 280,
+    minHeight: 110,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    padding: spacing.xl,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
     justifyContent: 'center',
+    alignItems: 'center',
     ...shadow.card,
   },
   pressed: {
@@ -44,23 +57,26 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   titleRow: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
+    width: '100%',
   },
   title: {
-    ...typography.hero,
+    ...typography.h2,
     color: colors.ink,
+    textAlign: 'center',
+    flexShrink: 1,
     ...shadow.text,
   },
   iconWrap: {
-    marginLeft: spacing.sm,
+    marginBottom: spacing.xs,
   },
   subtitle: {
     ...typography.body,
     color: colors.ink,
     textAlign: 'center',
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
 });

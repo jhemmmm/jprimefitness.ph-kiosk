@@ -54,8 +54,9 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.white },
   container: {
     flex: 1,
-    paddingHorizontal: spacing.xxl,
-    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.lg,
+    justifyContent: 'center',
   },
   header: { alignItems: 'center' },
   title: {
@@ -69,12 +70,13 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
     marginTop: spacing.sm,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
   },
   cards: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'stretch',
+    justifyContent: 'center',
+    alignSelf: 'stretch',
   },
   back: {
     alignSelf: 'center',

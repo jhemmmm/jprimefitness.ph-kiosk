@@ -5,8 +5,9 @@ A landscape-only Android tablet kiosk for the JPrime Fitness Gym entrance.
 - **Walk-In** — collect name + PH phone, then pay over the counter or via GCash QR (60s timer).
 - **Membership** — Time In / Time Out via member QR code scanned from the device camera.
 - Every terminal screen posts a record to `POST /api/kiosk/attendance` on the gym's Laravel backend.
+- Backend host is **auto-discovered** on the same Wi-Fi at boot. No hardcoded IP.
 
-> The companion backend at `/home/user/jprimefitness.ph` does not yet expose `/api/kiosk/*` routes. The kiosk ships with `MOCK_API=true` so all flows work end-to-end against an in-process mock. Switch to the real backend by flipping the flag in [app.json](app.json) once endpoints are live.
+> Discovery scans the local `/24` for `GET /api/kiosk/discover` returning `{ "service": "jprimefitness-kiosk-api", ... }`. Result cached in AsyncStorage. Manual IP entry shown if discovery fails.
 
 ## Stack
 
@@ -35,23 +36,25 @@ Open in Expo Go on an Android tablet, or press `w` for the web preview (camera f
 
 ## Configuration
 
-All runtime configuration lives in [app.json](app.json) under `expo.extra`:
+Static config lives in [app.json](app.json) under `expo.extra`:
 
 | key | default | purpose |
 |---|---|---|
-| `apiBaseUrl` | `http://localhost:8000` | Laravel base URL |
 | `kioskToken` | `dev-kiosk-token` | sent as `X-Kiosk-Token` header |
 | `mockApi` | `true` | when true, all API calls resolve in-process |
 | `idleTimeoutMs` | `60000` | inactivity threshold before returning to Home |
 | `paymentTimeoutSec` | `60` | GCash QR validity window |
+| `resultDisplaySec` | `8` | result screen auto-redirect countdown |
 
 Read at runtime in [lib/config.ts](lib/config.ts) via `expo-constants`.
+
+**Backend URL is NOT in config.** It is discovered at boot by [lib/discovery.ts](lib/discovery.ts) (subnet `/24` HTTP probe at port 8000), cached in AsyncStorage by [lib/backend.ts](lib/backend.ts), and gated by [lib/BackendProvider.tsx](lib/BackendProvider.tsx). Discovery probe targets `GET /api/kiosk/discover`, which must return `{ "service": "jprimefitness-kiosk-api", "version": "1", "serverId": "<uuid>" }`. Manual IP entry screen appears if discovery fails.
 
 ## Project layout
 
 ```
 app/                      # expo-router screens
-├── _layout.tsx           # Stack, landscape lock, idle-reset shell
+├── _layout.tsx           # Stack, landscape lock, kiosk lockdown, BackendProvider gate
 ├── index.tsx             # Home (Walk-In / Membership)
 ├── walk-in/
 │   ├── form.tsx          # name + phone (zod-validated)
@@ -64,11 +67,28 @@ app/                      # expo-router screens
 └── result.tsx            # shared success / failed screen
 
 components/               # BrandHeader, PrimaryCard, PrimaryButton, ScannerFrame, CountdownRing, icons
-lib/                      # config, api, kiosk (single source of API contract), session (idle reset)
+lib/
+├── config.ts             # static config from app.json
+├── api.ts                # fetch wrapper + token header
+├── kiosk.ts              # API contract types + mocks
+├── session.ts            # idle reset + goHome
+├── discovery.ts          # LAN /24 subnet scan
+├── backend.ts            # runtime URL holder + AsyncStorage cache
+├── BackendProvider.tsx   # boot gate: scanning / ready / needs-manual
+└── kioskLock.ts          # Android Lock Task wrapper
+modules/kiosk-lock-task/  # local Expo module: DeviceAdmin + startLockTask
 theme.ts                  # colors / spacing / typography tokens
 ```
 
 ## API contract (kiosk → Laravel)
+
+Server stamps `occurred_at` itself. Kiosk does not send timestamps.
+
+**`GET /api/kiosk/discover`** — unauthenticated, used by LAN auto-discovery.
+
+```jsonc
+{ "service": "jprimefitness-kiosk-api", "version": "1", "serverId": "<uuid>" }
+```
 
 **`POST /api/kiosk/attendance`** — fires on every terminal success/failed screen.
 
@@ -81,44 +101,171 @@ theme.ts                  # colors / spacing / typography tokens
   "phone": "+639171234567",
   "payment_method": "counter" | "online",
   "payment_status": "pending" | "paid" | "timeout" | "cancelled",
-  "payment_reference": "kio_2026_05_03_abc123",
-  "occurred_at": "2026-05-03T14:22:10+08:00"
+  "payment_reference": "kio_2026_05_03_abc123"
 }
 
-// Member
+// Member — backend validates qr_payload and returns ok=true/false
 {
   "type": "member",
-  "status": "success" | "failed",
   "action": "time_in" | "time_out",
-  "qr_payload": "<raw QR string>",
-  "reason": "unknown_qr" | "expired" | null,
-  "occurred_at": "2026-05-03T14:22:10+08:00"
+  "qr_payload": "JPRIME:<encrypted_data>"
 }
 ```
 
-Expected response: `{ "ok": true, "attendance_id": 123, "member_name": "Jheamuel Panuelos" }` — the success screen renders `member_name` for the "Welcome back, …" line.
+Response: `{ "ok": true, "attendance_id": 123, "member_name": "Jheamuel Panuelos" }`.
+Failure: `{ "ok": false, "message": "Unknown QR code" }`. Result screen branches on `ok`.
 
 **`POST /api/kiosk/payments`** → `{ reference, qr_data_url, expires_at }` — kiosk requests a GCash payment intent.
 
 **`GET /api/kiosk/payments/{reference}`** → `{ status: "pending" | "paid" | "expired" }` — polled every 2s.
 
-All requests include `X-Kiosk-Token: <kioskToken>` so the backend can authenticate the device.
+All requests except `/discover` include `X-Kiosk-Token: <kioskToken>`.
 
 ## Test the flows (with mocks)
 
-- **Walk-In → Counter**: Walk-In → name `Juan Dela Cruz` + phone `09171234567` → Continue → Over the Counter → "PROCEED TO THE COUNTER" success.
-- **Walk-In → Online**: same form → Pay Online → mock resolves to `paid` after ~5s → ACCESS GRANTED. Wait the full 60s → ACCESS DENIED with "Payment timed out".
-- **Membership**: Membership → Time In → grant camera → scan a QR with payload `JPRIME:MEMBER:123` → "Welcome back, Jheamuel Panuelos". Any other QR → ACCESS DENIED.
+Set `extra.mockApi: true` in [app.json](app.json) to bypass network. Discovery still runs; flows resolve in-process.
+
+- **Walk-In → Counter**: name `Juan Dela Cruz` + phone `09171234567` → Continue → Over the Counter → "PROCEED TO THE COUNTER" success.
+- **Walk-In → Online**: same form → Pay Online → mock resolves to `paid` after ~5s → ACCESS GRANTED. Wait the full 60s → ACCESS DENIED.
+- **Membership**: Membership → Time In → grant camera → scan a QR with payload `JPRIME:<anything>` → "Welcome back, …". Any other QR → ACCESS DENIED.
 - **Idle reset**: leave any inner screen untouched 60s → returns to Home.
+- **Result screen auto-redirect**: result/success screens count down `resultDisplaySec` then return to Home.
 
 On web, the scanner shows two buttons that simulate a known and an unknown QR.
 
 ## Build for Android (kiosk APK)
 
 ```bash
+npx expo prebuild --clean
 npm install -g eas-cli
 eas login
 eas build -p android --profile production
 ```
 
-For a true single-app kiosk, install the APK and enable Android lock-task mode (Device Owner) — outside the scope of this repo.
+### Lock-task / kiosk mode
+
+Local Expo module [modules/kiosk-lock-task](modules/kiosk-lock-task) provides `startLockTask()` via a `DeviceAdminReceiver`. Full home/recents/notification-shade block requires Android **Device Owner** mode, which can only be granted on a freshly provisioned device (no Google account, no other Device Admin apps).
+
+#### Full kiosk lockdown — ADB step-by-step
+
+Tested on Android 11+. Older versions may need different `dpm` syntax.
+
+##### Pre-reqs
+
+- Windows / macOS / Linux machine with [Android Platform Tools](https://developer.android.com/tools/releases/platform-tools) (`adb` on PATH).
+- USB cable.
+- Target Android tablet/phone you control end-to-end. **Not the user's personal device.**
+
+##### 1. Factory reset the device
+
+- Settings → System → Reset → Erase all data (factory reset). OR boot to recovery and wipe.
+- During first-boot setup wizard:
+  - **Skip Wi-Fi / Google account.** If asked, tap "Set up offline" / "Skip".
+  - Skip fingerprint/PIN prompts where possible (or set a known PIN; you'll need it to disable lock screen later).
+  - Decline all Google services prompts.
+- Reach the home screen with **zero Google accounts** and **no other Device Admin apps** installed. If a Google account exists, `set-device-owner` will fail with `java.lang.IllegalStateException: Not allowed to set the device owner because there are already several users on the device`.
+
+##### 2. Enable USB debugging
+
+- Settings → About phone → tap "Build number" 7× to unlock Developer options.
+- Settings → System → Developer options → enable **USB debugging**.
+- Plug device into computer. Accept the RSA fingerprint dialog. Confirm:
+
+  ```bash
+  adb devices
+  ```
+
+  Should list your device with status `device` (not `unauthorized`).
+
+##### 3. Build + install the kiosk APK
+
+```bash
+npx expo prebuild --clean
+npx expo run:android
+```
+
+Or sideload a release APK:
+
+```bash
+adb install -r app-release.apk
+```
+
+Confirm installed:
+
+```bash
+adb shell pm list packages | findstr jprimefitness
+# → package:ph.jprimefitness.kiosk
+```
+
+##### 4. Set the app as Device Owner
+
+```bash
+adb shell dpm set-device-owner ph.jprimefitness.kiosk/expo.modules.kiosklocktask.KioskAdminReceiver
+```
+
+Expected output:
+
+```text
+Success: Device owner set to package ComponentInfo{ph.jprimefitness.kiosk/expo.modules.kiosklocktask.KioskAdminReceiver}
+Active admin set to component {ph.jprimefitness.kiosk/expo.modules.kiosklocktask.KioskAdminReceiver}
+```
+
+If you see `Not allowed to set the device owner because there are already several users on the device` → there's a residual Google account. Re-do factory reset and skip account setup.
+
+##### 5. Reboot + verify
+
+```bash
+adb reboot
+```
+
+After boot, launch the kiosk app (it should be the only icon, or set as launcher — see step 6). On mount, [app/_layout.tsx](app/_layout.tsx) calls `startLockTask()` → home, recents, notification shade, and status-bar pull are all blocked.
+
+Verify Device Owner:
+
+```bash
+adb shell dpm list-owners
+# → Device Owner: ph.jprimefitness.kiosk/...
+```
+
+##### 6. (Optional) Set kiosk as default launcher
+
+Pressing Home should land back in the kiosk. If a stock launcher still appears:
+
+```bash
+adb shell cmd package set-home-activity ph.jprimefitness.kiosk/.MainActivity
+```
+
+(Activity class name may differ — check `AndroidManifest.xml` after prebuild.) Alternatively the app can claim the `CATEGORY_HOME` intent filter via a config plugin — out of scope here.
+
+##### 7. (Optional) Disable lock screen
+
+```bash
+adb shell locksettings set-disabled true
+```
+
+Or via Settings → Security → Screen lock → None (only available because Device Owner unlocks the option).
+
+##### 8. (Optional) Auto-launch on boot
+
+Add `RECEIVE_BOOT_COMPLETED` permission + a boot receiver. Out of scope here. Easiest workaround: enable Settings → System → Auto-restart with `dpm` policy or use a third-party "Kiosk Browser" wrapper.
+
+#### Removing kiosk mode
+
+Device Owner cannot be removed by the user via Settings (by design). To clear:
+
+```bash
+adb shell dpm remove-active-admin ph.jprimefitness.kiosk/expo.modules.kiosklocktask.KioskAdminReceiver
+```
+
+If that fails (it usually does once Device Owner is set), the only path is another **factory reset**.
+
+#### Fallback: no factory reset available
+
+Without Device Owner, [app/_layout.tsx](app/_layout.tsx) still does:
+
+- Hide nav bar (immersive sticky) via `expo-navigation-bar`.
+- Block hardware back via `BackHandler`.
+- Keep screen awake via `expo-keep-awake`.
+- Lock landscape via `expo-screen-orientation`.
+
+Home and recents stay reachable. Use **Settings → Security → App pinning** (long-press recents → pin) for a manual lockdown that survives until the user holds back+recents+PIN.

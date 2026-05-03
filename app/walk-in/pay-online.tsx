@@ -15,8 +15,11 @@ export default function PayOnlineScreen() {
   const [intent, setIntent] = useState<PaymentIntent | null>(null);
   const [error, setError] = useState<string | null>(null);
   const settledRef = useRef(false);
+  const createdRef = useRef(false);
 
   useEffect(() => {
+    if (createdRef.current) return;
+    createdRef.current = true;
     let cancelled = false;
     createPayment({ name, phone, amount: 150 })
       .then((pi) => {
@@ -28,7 +31,8 @@ export default function PayOnlineScreen() {
     return () => {
       cancelled = true;
     };
-  }, [name, phone]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const finish = useCallback(
     (status: 'paid' | 'timeout' | 'cancelled') => {
@@ -91,7 +95,7 @@ export default function PayOnlineScreen() {
               {intent ? (
                 <QRCode
                   value={intent.qr_data_url}
-                  size={260}
+                  size={200}
                   backgroundColor={colors.white}
                   color={colors.ink}
                 />
@@ -164,8 +168,8 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   qrPlaceholder: {
-    width: 260,
-    height: 260,
+    width: 200,
+    height: 200,
     backgroundColor: colors.surfaceMuted,
     borderRadius: radius.sm,
   },

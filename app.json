@@ -27,7 +27,13 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "permissions": ["android.permission.CAMERA"]
+      "usesCleartextTraffic": true,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.ACCESS_WIFI_STATE",
+        "android.permission.INTERNET"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -49,11 +55,11 @@
       ]
     ],
     "extra": {
-      "apiBaseUrl": "http://localhost:8000",
       "kioskToken": "3089147bac7b162e3ca760dd5bcd4e939873b6fd689a2018",
       "mockApi": false,
       "idleTimeoutMs": 60000,
-      "paymentTimeoutSec": 60
+      "paymentTimeoutSec": 60,
+      "resultDisplaySec": 8
     }
   }
 }
