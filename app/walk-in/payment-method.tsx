@@ -40,7 +40,6 @@ export default function PaymentMethodScreen() {
             onPress={() => choose('counter')}
             testID="pay-counter"
           />
-          <View style={{ width: spacing.xl }} />
           <PrimaryCard
             title="Pay Online"
             subtitle="Scan with GCash"
@@ -87,6 +86,7 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
     justifyContent: 'center',
     alignSelf: 'stretch',
+    gap: spacing.xl,
   },
   back: {
     alignSelf: 'center',

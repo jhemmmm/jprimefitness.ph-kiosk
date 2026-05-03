@@ -107,7 +107,6 @@ export default function WalkInFormScreen() {
               onPress={() => router.replace('/')}
               style={{ flex: 1 }}
             />
-            <View style={{ width: spacing.md }} />
             <PrimaryButton
               label="Continue"
               onPress={onContinue}
@@ -229,5 +228,6 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     marginTop: spacing.xl,
+    gap: spacing.md,
   },
 });

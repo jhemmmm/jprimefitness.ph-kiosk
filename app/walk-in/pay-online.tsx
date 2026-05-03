@@ -7,6 +7,7 @@ import { BrandHeader } from '@/components/BrandHeader';
 import { CountdownRing } from '@/components/CountdownRing';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { config } from '@/lib/config';
+import { useOnce } from '@/lib/hooks';
 import { createPayment, pollPayment, PaymentIntent } from '@/lib/kiosk';
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -15,24 +16,20 @@ export default function PayOnlineScreen() {
   const [intent, setIntent] = useState<PaymentIntent | null>(null);
   const [error, setError] = useState<string | null>(null);
   const settledRef = useRef(false);
-  const createdRef = useRef(false);
 
-  useEffect(() => {
-    if (createdRef.current) return;
-    createdRef.current = true;
+  useOnce(() => {
     let cancelled = false;
     createPayment({ name, phone, amount: 150 })
       .then((pi) => {
         if (!cancelled) setIntent(pi);
       })
-      .catch((e) => {
+      .catch((e: { message?: string }) => {
         if (!cancelled) setError(e?.message ?? 'Failed to start payment.');
       });
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  });
 
   const finish = useCallback(
     (status: 'paid' | 'timeout' | 'cancelled') => {

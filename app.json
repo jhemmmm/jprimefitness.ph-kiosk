@@ -52,7 +52,8 @@
         {
           "initialOrientation": "LANDSCAPE"
         }
-      ]
+      ],
+      "expo-font"
     ],
     "extra": {
       "kioskToken": "3089147bac7b162e3ca760dd5bcd4e939873b6fd689a2018",

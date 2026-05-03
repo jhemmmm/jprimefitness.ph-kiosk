@@ -4,6 +4,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -49,36 +50,43 @@ export function BackendProvider({ children }: { children: ReactNode }) {
   const [scanLog, setScanLog] = useState<string>('');
   const startedRef = useRef(false);
 
-  const log = useCallback((msg: string) => {
+  const verbose = useCallback((msg: string) => {
     if (__DEV__) console.log(`[discovery] ${msg}`);
-    setScanLog(msg);
   }, []);
+
+  const milestone = useCallback(
+    (msg: string) => {
+      verbose(msg);
+      setScanLog(msg);
+    },
+    [verbose],
+  );
 
   const runDiscovery = useCallback(async () => {
     setPhase('scanning');
-    setScanLog('starting…');
+    milestone('starting…');
 
     const cached = await loadCached();
     if (cached?.url) {
-      log(`probing cached ${cached.url}`);
+      milestone(`probing cached ${cached.url}`);
       const r = await probeUrl(cached.url, 1500);
       if (r.ok) {
         setApiBaseUrl(r.url, r.serverId);
         setPhase('ready');
         return;
       }
-      log('cached probe failed, scanning subnet');
+      milestone('cached probe failed, scanning subnet');
     }
 
-    const found = await discoverBackend(log);
+    const found = await discoverBackend(verbose, cached?.url);
     if (found) {
       setApiBaseUrl(found.url, found.serverId);
       setPhase('ready');
       return;
     }
-    log('discovery failed');
+    milestone('discovery failed');
     setPhase('needs-manual');
-  }, [log]);
+  }, [milestone, verbose]);
 
   useEffect(() => {
     if (startedRef.current) return;
@@ -104,21 +112,24 @@ export function BackendProvider({ children }: { children: ReactNode }) {
     async (ip: string, port: string): Promise<boolean> => {
       const url = buildUrlFromIpPort(ip, port);
       setPhase('scanning');
-      setScanLog(`probing ${url}`);
+      milestone(`probing ${url}`);
       const r = await probeUrl(url, 2000);
       if (r.ok) {
         setApiBaseUrl(r.url, r.serverId);
         setPhase('ready');
         return true;
       }
-      setScanLog(`probe failed: ${url}`);
+      milestone(`probe failed: ${url}`);
       setPhase('needs-manual');
       return false;
     },
-    [],
+    [milestone],
   );
 
-  const ctx: Ctx = { phase, scanLog, rescan, saveManual };
+  const ctx = useMemo<Ctx>(
+    () => ({ phase, scanLog, rescan, saveManual }),
+    [phase, scanLog, rescan, saveManual],
+  );
 
   if (phase === 'scanning') {
     return (

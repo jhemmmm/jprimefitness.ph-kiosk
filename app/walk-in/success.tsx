@@ -1,11 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CheckIcon } from '@/components/icons';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { postAttendance } from '@/lib/kiosk';
 import { config } from '@/lib/config';
+import { useAutoRedirectHome, useOnce } from '@/lib/hooks';
 import { colors, radius, spacing, typography } from '@/theme';
 
 export default function CounterSuccessScreen() {
@@ -15,27 +16,8 @@ export default function CounterSuccessScreen() {
   }>();
   const [posting, setPosting] = useState(true);
   const [postError, setPostError] = useState<string | null>(null);
-  const [remaining, setRemaining] = useState(config.resultDisplaySec);
-  const postedRef = useRef(false);
 
-  useEffect(() => {
-    if (posting) return;
-    setRemaining(config.resultDisplaySec);
-    const tick = setInterval(() => {
-      setRemaining((r) => Math.max(0, r - 1));
-    }, 1000);
-    const done = setTimeout(() => {
-      router.replace('/');
-    }, config.resultDisplaySec * 1000);
-    return () => {
-      clearInterval(tick);
-      clearTimeout(done);
-    };
-  }, [posting]);
-
-  useEffect(() => {
-    if (postedRef.current) return;
-    postedRef.current = true;
+  useOnce(() => {
     let cancelled = false;
     postAttendance({
       type: 'walk_in',
@@ -49,7 +31,7 @@ export default function CounterSuccessScreen() {
       .then(() => {
         if (!cancelled) setPosting(false);
       })
-      .catch((e) => {
+      .catch((e: { message?: string }) => {
         if (cancelled) return;
         setPostError(e?.message ?? 'Could not record visit.');
         setPosting(false);
@@ -57,8 +39,9 @@ export default function CounterSuccessScreen() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  });
+
+  const remaining = useAutoRedirectHome(!posting, config.resultDisplaySec);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>

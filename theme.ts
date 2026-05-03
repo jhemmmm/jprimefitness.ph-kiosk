@@ -28,11 +28,16 @@ export const spacing = {
   xxl: 32,
 };
 
+export const fonts = {
+  oswald: 'Oswald_400Regular',
+  oswaldBold: 'Oswald_700Bold',
+};
+
 export const typography = {
   brand: {
-    fontSize: 56,
-    fontWeight: '900' as const,
-    letterSpacing: -2,
+    fontFamily: fonts.oswaldBold,
+    fontSize: 48,
+    letterSpacing: 2,
   },
   hero: {
     fontSize: 40,

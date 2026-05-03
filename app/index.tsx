@@ -26,7 +26,6 @@ export default function HomeScreen() {
             onPress={() => router.push('/walk-in/form')}
             testID="card-walk-in"
           />
-          <View style={{ width: spacing.lg }} />
           <PrimaryCard
             title="Membership"
             subtitle="Member Face Verification"
@@ -71,6 +70,7 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
     justifyContent: 'center',
     alignSelf: 'stretch',
+    gap: spacing.lg,
   },
   footer: {
     ...typography.caps,

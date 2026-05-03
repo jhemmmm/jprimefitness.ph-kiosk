@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CheckIcon, CrossIcon } from '@/components/icons';
@@ -10,9 +10,11 @@ import {
   postAttendance,
 } from '@/lib/kiosk';
 import { config } from '@/lib/config';
+import { useAutoRedirectHome, useOnce } from '@/lib/hooks';
 import { colors, radius, spacing, typography } from '@/theme';
 
 type Status = 'success' | 'failed';
+type Phase = 'pending' | 'success' | 'failed';
 type Flow = 'walk_in' | 'member';
 type MemberAction = 'time_in' | 'time_out';
 type PaymentStatusParam = 'pending' | 'paid' | 'timeout' | 'cancelled';
@@ -29,7 +31,7 @@ type Params = {
   // member
   action?: MemberAction;
   qr_payload?: string;
-  // either
+  // walk_in only
   reason?: string;
 };
 
@@ -40,37 +42,17 @@ export default function ResultScreen() {
   const [posting, setPosting] = useState(true);
   const [postError, setPostError] = useState<string | null>(null);
   const [response, setResponse] = useState<AttendanceResponse | null>(null);
-  const [remaining, setRemaining] = useState(config.resultDisplaySec);
-  const postedRef = useRef(false);
 
-  useEffect(() => {
-    if (posting) return;
-    setRemaining(config.resultDisplaySec);
-    const tick = setInterval(() => {
-      setRemaining((r) => Math.max(0, r - 1));
-    }, 1000);
-    const done = setTimeout(() => {
-      router.replace('/');
-    }, config.resultDisplaySec * 1000);
-    return () => {
-      clearInterval(tick);
-      clearTimeout(done);
-    };
-  }, [posting]);
-
-  useEffect(() => {
-    if (postedRef.current) return;
-    postedRef.current = true;
+  useOnce(() => {
     let cancelled = false;
-    const payload = buildPayload(params, flow);
-    postAttendance(payload)
+    postAttendance(buildPayload(params, flow))
       .then((r) => {
         if (!cancelled) {
           setResponse(r);
           setPosting(false);
         }
       })
-      .catch((e) => {
+      .catch((e: { message?: string }) => {
         if (cancelled) return;
         setPostError(e?.message ?? 'Could not record visit.');
         setPosting(false);
@@ -78,54 +60,20 @@ export default function ResultScreen() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  });
 
-  const status: Status =
-    flow === 'member'
-      ? response?.ok
-        ? 'success'
-        : posting
-          ? 'success'
-          : 'failed'
-      : params.status === 'success'
-        ? 'success'
-        : 'failed';
-  const isSuccess = status === 'success';
+  const remaining = useAutoRedirectHome(!posting, config.resultDisplaySec);
 
-  const headline = posting
-    ? 'VERIFYING…'
-    : isSuccess
-      ? 'ACCESS GRANTED'
-      : 'ACCESS DENIED';
-  const memberName = response?.member_name;
-  const subline = buildSubline({ flow, status, params, memberName, posting, response });
+  const phase = derivePhase({ flow, posting, response, params });
+  const headline = HEADLINES[phase];
+  const subline = buildSubline({ flow, phase, params, response });
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.container}>
         <Text style={styles.title}>{headline}</Text>
 
-        {posting && flow === 'member' ? (
-          <View
-            style={[styles.badge, { backgroundColor: colors.surfaceMuted }]}
-          >
-            <ActivityIndicator color={colors.crimson} size="large" />
-          </View>
-        ) : (
-          <View
-            style={[
-              styles.badge,
-              { backgroundColor: isSuccess ? colors.success : colors.danger },
-            ]}
-          >
-            {isSuccess ? (
-              <CheckIcon size={56} color={colors.white} />
-            ) : (
-              <CrossIcon size={56} color={colors.white} />
-            )}
-          </View>
-        )}
+        <Badge phase={phase} />
 
         <Text style={styles.welcome}>{subline.primary}</Text>
         {subline.secondary ? (
@@ -142,9 +90,7 @@ export default function ResultScreen() {
         ) : null}
 
         <PrimaryButton
-          label={
-            posting ? 'Back to Home' : `Back to Home (${remaining})`
-          }
+          label={posting ? 'Back to Home' : `Back to Home (${remaining})`}
           onPress={() => router.replace('/')}
           style={styles.cta}
         />
@@ -153,42 +99,82 @@ export default function ResultScreen() {
   );
 }
 
+const HEADLINES: Record<Phase, string> = {
+  pending: 'VERIFYING…',
+  success: 'ACCESS GRANTED',
+  failed: 'ACCESS DENIED',
+};
+
+function Badge({ phase }: { phase: Phase }) {
+  if (phase === 'pending') {
+    return (
+      <View style={[styles.badge, { backgroundColor: colors.surfaceMuted }]}>
+        <ActivityIndicator color={colors.crimson} size="large" />
+      </View>
+    );
+  }
+  const isSuccess = phase === 'success';
+  return (
+    <View
+      style={[
+        styles.badge,
+        { backgroundColor: isSuccess ? colors.success : colors.danger },
+      ]}
+    >
+      {isSuccess ? (
+        <CheckIcon size={56} color={colors.white} />
+      ) : (
+        <CrossIcon size={56} color={colors.white} />
+      )}
+    </View>
+  );
+}
+
+function derivePhase(args: {
+  flow: Flow;
+  posting: boolean;
+  response: AttendanceResponse | null;
+  params: Params;
+}): Phase {
+  const { flow, posting, response, params } = args;
+  if (flow === 'member') {
+    if (posting) return 'pending';
+    return response?.ok ? 'success' : 'failed';
+  }
+  return params.status === 'success' ? 'success' : 'failed';
+}
+
 function buildPayload(p: Params, flow: Flow): AttendancePayload {
   if (flow === 'member') {
     return {
       type: 'member',
-      action: (p.action as MemberAction) ?? 'time_in',
+      action: p.action ?? 'time_in',
       qr_payload: p.qr_payload ?? '',
     };
   }
-  const status: Status = p.status === 'success' ? 'success' : 'failed';
   return {
     type: 'walk_in',
-    status,
+    status: p.status === 'success' ? 'success' : 'failed',
     name: p.name ?? '',
     phone: p.phone ?? '',
     payment_method: p.method ?? 'online',
     payment_status: p.payment_status ?? 'paid',
-    payment_reference: p.payment_reference ? p.payment_reference : null,
+    payment_reference: p.payment_reference || null,
   };
 }
 
 function buildSubline(args: {
   flow: Flow;
-  status: Status;
+  phase: Phase;
   params: Params;
-  memberName?: string;
-  posting: boolean;
   response: AttendanceResponse | null;
 }): { primary: string; secondary?: string } {
-  const { flow, status, params, memberName, posting, response } = args;
+  const { flow, phase, params, response } = args;
   if (flow === 'member') {
-    if (posting) {
-      return { primary: 'Verifying QR code…' };
-    }
-    if (status === 'success') {
+    if (phase === 'pending') return { primary: 'Verifying QR code…' };
+    if (phase === 'success') {
       const verb = params.action === 'time_out' ? 'Goodbye' : 'Welcome back';
-      const who = memberName ?? 'member';
+      const who = response?.member_name ?? 'member';
       return {
         primary: `${verb}, ${who}`,
         secondary:
@@ -202,8 +188,7 @@ function buildSubline(args: {
       secondary: 'Please ask the front desk for assistance.',
     };
   }
-  // walk_in
-  if (status === 'success') {
+  if (phase === 'success') {
     return {
       primary: `Welcome, ${params.name ?? 'guest'}`,
       secondary: 'Enjoy your workout — your visit has been recorded.',

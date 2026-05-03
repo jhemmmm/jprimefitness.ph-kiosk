@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandHeader } from '@/components/BrandHeader';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { PrimaryCard } from '@/components/PrimaryCard';
+import { TimeInIcon, TimeOutIcon } from '@/components/icons';
 import { colors, spacing, typography } from '@/theme';
 
 export default function MemberActionScreen() {
@@ -27,13 +28,14 @@ export default function MemberActionScreen() {
           <PrimaryCard
             title="Time In"
             subtitle="Start your session"
+            icon={<TimeInIcon size={48} />}
             onPress={() => choose('time_in')}
             testID="member-time-in"
           />
-          <View style={{ width: spacing.xl }} />
           <PrimaryCard
             title="Time Out"
             subtitle="End your session"
+            icon={<TimeOutIcon size={48} />}
             onPress={() => choose('time_out')}
             testID="member-time-out"
           />
@@ -77,6 +79,7 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
     justifyContent: 'center',
     alignSelf: 'stretch',
+    gap: spacing.xl,
   },
   back: {
     alignSelf: 'center',
