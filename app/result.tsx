@@ -1,23 +1,19 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { CheckIcon, CrossIcon } from '@/components/icons';
-import { PrimaryButton } from '@/components/PrimaryButton';
-import {
-  AttendancePayload,
-  AttendanceResponse,
-  postAttendance,
-} from '@/lib/kiosk';
-import { config } from '@/lib/config';
-import { useAutoRedirectHome, useOnce } from '@/lib/hooks';
-import { colors, radius, spacing, typography } from '@/theme';
+import { router, useLocalSearchParams } from "expo-router";
+import { useState } from "react";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { CheckIcon, CrossIcon } from "@/components/icons";
+import { PrimaryButton } from "@/components/PrimaryButton";
+import { AttendancePayload, AttendanceResponse, postAttendance } from "@/lib/kiosk";
+import { config } from "@/lib/config";
+import { useAutoRedirectHome, useOnce } from "@/lib/hooks";
+import { colors, radius, spacing, typography } from "@/theme";
 
-type Status = 'success' | 'failed';
-type Phase = 'pending' | 'success' | 'failed';
-type Flow = 'walk_in' | 'member';
-type MemberAction = 'time_in' | 'time_out';
-type PaymentStatusParam = 'pending' | 'paid' | 'timeout' | 'cancelled';
+type Status = "success" | "failed";
+type Phase = "pending" | "success" | "failed";
+type Flow = "walk_in" | "member";
+type MemberAction = "time_in" | "time_out";
+type PaymentStatusParam = "pending" | "paid" | "timeout" | "cancelled";
 
 type Params = {
   flow: Flow;
@@ -25,7 +21,7 @@ type Params = {
   // walk_in
   name?: string;
   phone?: string;
-  method?: 'counter' | 'online';
+  method?: "counter" | "online";
   payment_status?: PaymentStatusParam;
   payment_reference?: string;
   // member
@@ -33,11 +29,12 @@ type Params = {
   qr_payload?: string;
   // walk_in only
   reason?: string;
+  discount_type?: string;
 };
 
 export default function ResultScreen() {
   const params = useLocalSearchParams<Params>();
-  const flow: Flow = params.flow === 'member' ? 'member' : 'walk_in';
+  const flow: Flow = params.flow === "member" ? "member" : "walk_in";
 
   const [posting, setPosting] = useState(true);
   const [postError, setPostError] = useState<string | null>(null);
@@ -54,7 +51,7 @@ export default function ResultScreen() {
       })
       .catch((e: { message?: string }) => {
         if (cancelled) return;
-        setPostError(e?.message ?? 'Could not record visit.');
+        setPostError(e?.message ?? "Could not record visit.");
         setPosting(false);
       });
     return () => {
@@ -69,16 +66,14 @@ export default function ResultScreen() {
   const subline = buildSubline({ flow, phase, params, response });
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.container}>
         <Text style={styles.title}>{headline}</Text>
 
         <Badge phase={phase} />
 
         <Text style={styles.welcome}>{subline.primary}</Text>
-        {subline.secondary ? (
-          <Text style={styles.tagline}>{subline.secondary}</Text>
-        ) : null}
+        {subline.secondary ? <Text style={styles.tagline}>{subline.secondary}</Text> : null}
 
         {posting ? (
           <View style={styles.postRow}>
@@ -89,120 +84,92 @@ export default function ResultScreen() {
           <Text style={styles.errorHint}>{postError}</Text>
         ) : null}
 
-        <PrimaryButton
-          label={posting ? 'Back to Home' : `Back to Home (${remaining})`}
-          onPress={() => router.replace('/')}
-          style={styles.cta}
-        />
+        <PrimaryButton label={posting ? "Back to Home" : `Back to Home (${remaining})`} onPress={() => router.replace("/")} style={styles.cta} />
       </View>
     </SafeAreaView>
   );
 }
 
 const HEADLINES: Record<Phase, string> = {
-  pending: 'VERIFYING…',
-  success: 'ACCESS GRANTED',
-  failed: 'ACCESS DENIED',
+  pending: "VERIFYING…",
+  success: "ACCESS GRANTED",
+  failed: "ACCESS DENIED",
 };
 
 function Badge({ phase }: { phase: Phase }) {
-  if (phase === 'pending') {
+  if (phase === "pending") {
     return (
       <View style={[styles.badge, { backgroundColor: colors.surfaceMuted }]}>
         <ActivityIndicator color={colors.crimson} size="large" />
       </View>
     );
   }
-  const isSuccess = phase === 'success';
-  return (
-    <View
-      style={[
-        styles.badge,
-        { backgroundColor: isSuccess ? colors.success : colors.danger },
-      ]}
-    >
-      {isSuccess ? (
-        <CheckIcon size={56} color={colors.white} />
-      ) : (
-        <CrossIcon size={56} color={colors.white} />
-      )}
-    </View>
-  );
+  const isSuccess = phase === "success";
+  return <View style={[styles.badge, { backgroundColor: isSuccess ? colors.success : colors.danger }]}>{isSuccess ? <CheckIcon size={56} color={colors.white} /> : <CrossIcon size={56} color={colors.white} />}</View>;
 }
 
-function derivePhase(args: {
-  flow: Flow;
-  posting: boolean;
-  response: AttendanceResponse | null;
-  params: Params;
-}): Phase {
+function derivePhase(args: { flow: Flow; posting: boolean; response: AttendanceResponse | null; params: Params }): Phase {
   const { flow, posting, response, params } = args;
-  if (flow === 'member') {
-    if (posting) return 'pending';
-    return response?.ok ? 'success' : 'failed';
+  if (flow === "member") {
+    if (posting) return "pending";
+    return response?.ok ? "success" : "failed";
   }
-  return params.status === 'success' ? 'success' : 'failed';
+  return params.status === "success" ? "success" : "failed";
 }
 
 function buildPayload(p: Params, flow: Flow): AttendancePayload {
-  if (flow === 'member') {
+  if (flow === "member") {
     return {
-      type: 'member',
-      action: p.action ?? 'time_in',
-      qr_payload: p.qr_payload ?? '',
+      type: "member",
+      action: p.action ?? "time_in",
+      qr_payload: p.qr_payload ?? "",
     };
   }
+  const discount = p.discount_type === "student" || p.discount_type === "senior" ? p.discount_type : null;
   return {
-    type: 'walk_in',
-    status: p.status === 'success' ? 'success' : 'failed',
-    name: p.name ?? '',
-    phone: p.phone ?? '',
-    payment_method: p.method ?? 'online',
-    payment_status: p.payment_status ?? 'paid',
+    type: "walk_in",
+    status: p.status === "success" ? "success" : "failed",
+    name: p.name ?? "",
+    phone: p.phone ?? "",
+    payment_method: p.method ?? "online",
+    payment_status: p.payment_status ?? "paid",
     payment_reference: p.payment_reference || null,
+    discount_type: discount,
   };
 }
 
-function buildSubline(args: {
-  flow: Flow;
-  phase: Phase;
-  params: Params;
-  response: AttendanceResponse | null;
-}): { primary: string; secondary?: string } {
+function buildSubline(args: { flow: Flow; phase: Phase; params: Params; response: AttendanceResponse | null }): { primary: string; secondary?: string } {
   const { flow, phase, params, response } = args;
-  if (flow === 'member') {
-    if (phase === 'pending') return { primary: 'Verifying QR code…' };
-    if (phase === 'success') {
-      const verb = params.action === 'time_out' ? 'Goodbye' : 'Welcome back';
-      const who = response?.member_name ?? 'member';
+  if (flow === "member") {
+    if (phase === "pending") return { primary: "Verifying QR code…" };
+    if (phase === "success") {
+      const verb = params.action === "time_out" ? "Goodbye" : "Welcome back";
+      const who = response?.member_name ?? "member";
       return {
         primary: `${verb}, ${who}`,
-        secondary:
-          params.action === 'time_out'
-            ? 'See you next session.'
-            : 'Stay strong and keep pushing your limits.',
+        secondary: params.action === "time_out" ? "See you next session." : "Stay strong and keep pushing your limits.",
       };
     }
     return {
-      primary: response?.message ?? 'QR code not recognized',
-      secondary: 'Please ask the front desk for assistance.',
+      primary: response?.message ?? "QR code not recognized",
+      secondary: "Please ask the front desk for assistance.",
     };
   }
-  if (phase === 'success') {
+  if (phase === "success") {
     return {
-      primary: `Welcome, ${params.name ?? 'guest'}`,
-      secondary: 'Enjoy your workout — your visit has been recorded.',
+      primary: `Welcome, ${params.name ?? "guest"}`,
+      secondary: "Enjoy your workout — your visit has been recorded.",
     };
   }
-  if (params.reason === 'timeout') {
+  if (params.reason === "timeout") {
     return {
-      primary: 'Payment timed out',
-      secondary: 'Please try again or pay over the counter.',
+      primary: "Payment timed out",
+      secondary: "Please try again or pay over the counter.",
     };
   }
   return {
-    primary: 'Payment was cancelled',
-    secondary: 'No charge has been made. You can try again any time.',
+    primary: "Payment was cancelled",
+    secondary: "No charge has been made. You can try again any time.",
   };
 }
 
@@ -212,38 +179,38 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: spacing.xxl,
     paddingVertical: spacing.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   title: {
     ...typography.h1,
     color: colors.ink,
-    textAlign: 'center',
-    fontWeight: '900',
+    textAlign: "center",
+    fontWeight: "900",
     fontSize: 32,
   },
   badge: {
     width: 96,
     height: 96,
     borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginVertical: spacing.lg,
   },
   welcome: {
     ...typography.h2,
     color: colors.ink,
-    textAlign: 'center',
+    textAlign: "center",
   },
   tagline: {
     ...typography.body,
     color: colors.textMuted,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: spacing.xs,
   },
   postRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
     marginTop: spacing.lg,
   },

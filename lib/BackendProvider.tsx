@@ -32,7 +32,6 @@ type Phase = 'scanning' | 'ready' | 'needs-manual';
 
 type Ctx = {
   phase: Phase;
-  scanLog: string;
   rescan: () => void;
   saveManual: (ip: string, port: string) => Promise<boolean>;
 };
@@ -47,46 +46,29 @@ export function useBackend(): Ctx {
 
 export function BackendProvider({ children }: { children: ReactNode }) {
   const [phase, setPhase] = useState<Phase>('scanning');
-  const [scanLog, setScanLog] = useState<string>('');
   const startedRef = useRef(false);
-
-  const verbose = useCallback((msg: string) => {
-    if (__DEV__) console.log(`[discovery] ${msg}`);
-  }, []);
-
-  const milestone = useCallback(
-    (msg: string) => {
-      verbose(msg);
-      setScanLog(msg);
-    },
-    [verbose],
-  );
 
   const runDiscovery = useCallback(async () => {
     setPhase('scanning');
-    milestone('starting…');
 
     const cached = await loadCached();
     if (cached?.url) {
-      milestone(`probing cached ${cached.url}`);
       const r = await probeUrl(cached.url, 1500);
       if (r.ok) {
         setApiBaseUrl(r.url, r.serverId);
         setPhase('ready');
         return;
       }
-      milestone('cached probe failed, scanning subnet');
     }
 
-    const found = await discoverBackend(verbose, cached?.url);
+    const found = await discoverBackend(undefined, cached?.url);
     if (found) {
       setApiBaseUrl(found.url, found.serverId);
       setPhase('ready');
       return;
     }
-    milestone('discovery failed');
     setPhase('needs-manual');
-  }, [milestone, verbose]);
+  }, []);
 
   useEffect(() => {
     if (startedRef.current) return;
@@ -112,23 +94,21 @@ export function BackendProvider({ children }: { children: ReactNode }) {
     async (ip: string, port: string): Promise<boolean> => {
       const url = buildUrlFromIpPort(ip, port);
       setPhase('scanning');
-      milestone(`probing ${url}`);
       const r = await probeUrl(url, 2000);
       if (r.ok) {
         setApiBaseUrl(r.url, r.serverId);
         setPhase('ready');
         return true;
       }
-      milestone(`probe failed: ${url}`);
       setPhase('needs-manual');
       return false;
     },
-    [milestone],
+    [],
   );
 
   const ctx = useMemo<Ctx>(
-    () => ({ phase, scanLog, rescan, saveManual }),
-    [phase, scanLog, rescan, saveManual],
+    () => ({ phase, rescan, saveManual }),
+    [phase, rescan, saveManual],
   );
 
   if (phase === 'scanning') {
@@ -143,9 +123,6 @@ export function BackendProvider({ children }: { children: ReactNode }) {
               style={{ marginTop: spacing.xl }}
             />
             <Text style={styles.label}>Connecting to server…</Text>
-            {__DEV__ && scanLog ? (
-              <Text style={styles.debug}>{scanLog}</Text>
-            ) : null}
           </View>
         </SafeAreaView>
       </BackendCtx.Provider>
@@ -164,7 +141,7 @@ export function BackendProvider({ children }: { children: ReactNode }) {
 }
 
 function ManualSetup() {
-  const { rescan, saveManual, scanLog } = useBackend();
+  const { rescan, saveManual } = useBackend();
   const [ip, setIp] = useState('');
   const [port, setPort] = useState('8000');
   const [busy, setBusy] = useState(false);
@@ -217,7 +194,6 @@ function ManualSetup() {
             editable={!busy}
           />
           {err ? <Text style={styles.error}>{err}</Text> : null}
-          {scanLog ? <Text style={styles.debug}>{scanLog}</Text> : null}
         </View>
 
         <PrimaryButton
@@ -256,12 +232,6 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textMuted,
     marginTop: spacing.md,
-    textAlign: 'center',
-  },
-  debug: {
-    ...typography.caption,
-    color: colors.textMuted,
-    marginTop: spacing.sm,
     textAlign: 'center',
   },
   form: {

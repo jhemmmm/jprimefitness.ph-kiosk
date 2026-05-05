@@ -13,17 +13,18 @@ export class ApiError extends Error {
 
 type Method = 'GET' | 'POST';
 
+type RequestOpts = {
+  baseUrl?: string;
+};
+
 async function request<T>(
   method: Method,
   path: string,
   body?: unknown,
+  opts?: RequestOpts,
 ): Promise<T> {
-  const baseUrl = getApiBaseUrl();
+  const baseUrl = opts?.baseUrl ?? getApiBaseUrl();
   const url = `${baseUrl}${path}`;
-  const startedAt = Date.now();
-  if (__DEV__) {
-    console.log(`[api] -> ${method} ${url}`, body ?? '');
-  }
   let res: Response;
   try {
     res = await fetch(url, {
@@ -36,21 +37,13 @@ async function request<T>(
       body: body == null ? undefined : JSON.stringify(body),
     });
   } catch (e) {
-    if (__DEV__) {
-      console.log(`[api] !! ${method} ${url} network error`, e);
-    }
-    clearApiBaseUrl();
+    // Only invalidate the discovered LAN backend on transport failure — a live-URL
+    // failure shouldn't kick the kiosk back into rediscovery.
+    if (!opts?.baseUrl) clearApiBaseUrl();
     throw e;
   }
   const text = await res.text();
   const parsed = text ? safeJson(text) : null;
-  if (__DEV__) {
-    const ms = Date.now() - startedAt;
-    console.log(
-      `[api] <- ${res.status} ${method} ${url} (${ms}ms)`,
-      parsed ?? text,
-    );
-  }
   if (!res.ok) {
     throw new ApiError(res.status, `HTTP ${res.status} ${res.statusText}`, parsed);
   }
@@ -66,6 +59,7 @@ function safeJson(text: string): unknown {
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>('GET', path),
-  post: <T>(path: string, body?: unknown) => request<T>('POST', path, body),
+  get: <T>(path: string, opts?: RequestOpts) => request<T>('GET', path, undefined, opts),
+  post: <T>(path: string, body?: unknown, opts?: RequestOpts) =>
+    request<T>('POST', path, body, opts),
 };

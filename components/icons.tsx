@@ -38,6 +38,25 @@ export function TimeOutIcon({ size = 64, color = colors.crimson }: IconProps) {
   );
 }
 
+export function CounterIcon({ size = 64, color = colors.crimson }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+      <Path d="M21 7H3c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm0 8H3V9h18v6zM5 10h2v4H5zm4 0h2v4H9zm4 0h2v4h-2zm4 0h2v4h-2z" />
+    </Svg>
+  );
+}
+
+export function OnlinePayIcon({
+  size = 64,
+  color = colors.crimson,
+}: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+      <Path d="M3 11h8V3H3v8zm2-6h4v4H5V5zM3 21h8v-8H3v8zm2-6h4v4H5v-4zM13 3v8h8V3h-8zm6 6h-4V5h4v4zm-6 6h2v2h-2zm2 2h2v2h-2zm-2 2h2v2h-2zm4 0h2v2h-2zm2-4h2v2h-2zm-2 2h2v2h-2zm0-4h2v2h-2z" />
+    </Svg>
+  );
+}
+
 export function CheckIcon({ size = 64, color = colors.white }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">

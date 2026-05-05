@@ -16,6 +16,7 @@ export type WalkInPayload = {
   payment_method: 'counter' | 'online';
   payment_status: 'pending' | 'paid' | 'timeout' | 'cancelled';
   payment_reference: string | null;
+  discount_type?: DiscountType | null;
 };
 
 export type MemberPayload = {
@@ -26,9 +27,16 @@ export type MemberPayload = {
 
 export type AttendancePayload = WalkInPayload | MemberPayload;
 
+export type DiscountType = 'student' | 'senior';
+
 export type PaymentIntent = {
   reference: string;
-  qr_data_url: string;
+  qr_data_url: string | null;
+  qr_image_url: string | null;
+  amount: number;
+  base_amount?: number;
+  discount_type?: DiscountType | null;
+  discount_percent?: number;
   expires_at: string;
 };
 
@@ -37,72 +45,29 @@ export type PaymentStatus = 'pending' | 'paid' | 'expired';
 export async function postAttendance(
   payload: AttendancePayload,
 ): Promise<AttendanceResponse> {
-  if (config.mockApi) return mockAttendance(payload);
   return api.post<AttendanceResponse>('/api/kiosk/attendance', payload);
+}
+
+// Online-payment calls must round-trip through the same backend PayMongo's
+// webhook can reach. If liveApiUrl is set, route there; otherwise fall back to
+// the discovered LAN URL (e.g. when ngrok-tunneling a local backend in dev).
+function paymentRequestOpts(): { baseUrl?: string } | undefined {
+  return config.liveApiUrl ? { baseUrl: config.liveApiUrl } : undefined;
 }
 
 export async function createPayment(args: {
   name: string;
   phone: string;
-  amount: number;
+  method?: 'online' | 'cash';
+  discount_type?: DiscountType | null;
 }): Promise<PaymentIntent> {
-  if (config.mockApi) return mockCreatePayment();
-  return api.post<PaymentIntent>('/api/kiosk/payments', args);
+  return api.post<PaymentIntent>('/api/kiosk/payments', args, paymentRequestOpts());
 }
 
 export async function pollPayment(reference: string): Promise<PaymentStatus> {
-  if (config.mockApi) return mockPollPayment(reference);
   const r = await api.get<{ status: PaymentStatus }>(
     `/api/kiosk/payments/${encodeURIComponent(reference)}`,
+    paymentRequestOpts(),
   );
   return r.status;
-}
-
-// ---------------- mocks ----------------
-
-function mockAttendance(p: AttendancePayload): Promise<AttendanceResponse> {
-  return delay(200).then(() => {
-    if (p.type === 'member') {
-      const known = /^JPRIME:(.+)/.exec(p.qr_payload);
-      if (known) {
-        return {
-          ok: true,
-          attendance_id: Math.floor(Math.random() * 100000),
-          member_name: 'Jheamuel Panuelos',
-        };
-      }
-      return { ok: false, message: 'Unknown QR code' };
-    }
-    return {
-      ok: p.status === 'success',
-      attendance_id: Math.floor(Math.random() * 100000),
-    };
-  });
-}
-
-const mockPaymentStarts = new Map<string, number>();
-
-function mockCreatePayment(): Promise<PaymentIntent> {
-  const reference = `kio_mock_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-  mockPaymentStarts.set(reference, Date.now());
-  return delay(150).then(() => ({
-    reference,
-    qr_data_url: 'gcash://demo/' + reference,
-    expires_at: new Date(Date.now() + config.paymentTimeoutSec * 1000).toISOString(),
-  }));
-}
-
-function mockPollPayment(reference: string): Promise<PaymentStatus> {
-  const startedAt = mockPaymentStarts.get(reference);
-  return delay(120).then(() => {
-    if (!startedAt) return 'expired';
-    const elapsed = Date.now() - startedAt;
-    if (elapsed > config.paymentTimeoutSec * 1000) return 'expired';
-    if (elapsed > 5_000) return 'paid';
-    return 'pending';
-  });
-}
-
-function delay(ms: number) {
-  return new Promise<void>((r) => setTimeout(r, ms));
 }

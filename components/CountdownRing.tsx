@@ -27,7 +27,7 @@ export function CountdownRing({
     const id = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startedAt) / 1000);
       const next = Math.max(0, durationSec - elapsed);
-      setRemaining(next);
+      setRemaining((prev) => (prev === next ? prev : next));
       if (next <= 0 && !expiredRef.current) {
         expiredRef.current = true;
         clearInterval(id);

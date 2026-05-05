@@ -1,27 +1,17 @@
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import * as ScreenOrientation from 'expo-screen-orientation';
-import * as NavigationBar from 'expo-navigation-bar';
-import { useKeepAwake } from 'expo-keep-awake';
-import {
-  useFonts,
-  Oswald_400Regular,
-  Oswald_700Bold,
-} from '@expo-google-fonts/oswald';
-import { useEffect } from 'react';
-import {
-  ActivityIndicator,
-  BackHandler,
-  Platform,
-  StyleSheet,
-  View,
-} from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { KioskSessionProvider, useKioskSession } from '@/lib/session';
-import { BackendProvider } from '@/lib/BackendProvider';
-import { startLockTask } from '@/lib/kioskLock';
-import { colors } from '@/theme';
+import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import * as ScreenOrientation from "expo-screen-orientation";
+import * as NavigationBar from "expo-navigation-bar";
+import { useKeepAwake } from "expo-keep-awake";
+import { useFonts, Oswald_400Regular, Oswald_700Bold } from "@expo-google-fonts/oswald";
+import { useEffect } from "react";
+import { ActivityIndicator, BackHandler, Platform, StyleSheet, View } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KioskSessionProvider, useKioskSession } from "@/lib/session";
+import { BackendProvider } from "@/lib/BackendProvider";
+import { startLockTask } from "@/lib/kioskLock";
+import { colors } from "@/theme";
 
 function RootShell({ children }: { children: React.ReactNode }) {
   const { resetIdle } = useKioskSession();
@@ -35,8 +25,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
       onMoveShouldSetResponder={() => {
         resetIdle();
         return false;
-      }}
-    >
+      }}>
       {children}
     </View>
   );
@@ -50,28 +39,26 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (Platform.OS !== 'web') {
-      ScreenOrientation.lockAsync(
-        ScreenOrientation.OrientationLock.LANDSCAPE,
-      ).catch(() => {});
+    if (Platform.OS !== "web") {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE).catch(() => {});
     }
   }, []);
 
   useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    NavigationBar.setVisibilityAsync('hidden').catch(() => {});
-    NavigationBar.setBehaviorAsync('overlay-swipe').catch(() => {});
+    if (Platform.OS !== "android") return;
+    NavigationBar.setVisibilityAsync("hidden").catch(() => {});
+    NavigationBar.setBehaviorAsync("overlay-swipe").catch(() => {});
     NavigationBar.setBackgroundColorAsync(colors.white).catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    if (Platform.OS !== "android") return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => true);
     return () => sub.remove();
   }, []);
 
   useEffect(() => {
-    if (Platform.OS !== 'android') return;
+    if (Platform.OS !== "android") return;
     startLockTask().catch(() => {});
   }, []);
 
@@ -93,7 +80,7 @@ export default function RootLayout() {
                 screenOptions={{
                   headerShown: false,
                   contentStyle: { backgroundColor: colors.white },
-                  animation: 'fade',
+                  animation: "fade",
                 }}
               />
             </RootShell>
@@ -109,7 +96,7 @@ const fontGate = StyleSheet.create({
   splash: {
     flex: 1,
     backgroundColor: colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

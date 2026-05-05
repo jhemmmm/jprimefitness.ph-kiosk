@@ -2,28 +2,45 @@ import { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, radius, shadow, spacing, typography } from '@/theme';
 
+type Tone = 'default' | 'danger';
+
 type Props = {
   title: string;
   subtitle?: string;
   icon?: ReactNode;
   onPress: () => void;
   testID?: string;
+  tone?: Tone;
+  disabled?: boolean;
 };
 
-export function PrimaryCard({ title, subtitle, icon, onPress, testID }: Props) {
+export function PrimaryCard({
+  title,
+  subtitle,
+  icon,
+  onPress,
+  testID,
+  tone = 'default',
+  disabled = false,
+}: Props) {
+  const isDanger = tone === 'danger';
   return (
     <Pressable
       onPress={onPress}
       testID={testID}
+      disabled={disabled}
       style={({ pressed }) => [
         styles.card,
-        pressed && styles.pressed,
+        isDanger && styles.cardDanger,
+        !disabled && pressed && styles.pressed,
+        !disabled && pressed && isDanger && styles.pressedDanger,
+        disabled && styles.disabled,
       ]}
     >
       <View style={styles.titleRow}>
         {icon ? <View style={styles.iconWrap}>{icon}</View> : null}
         <Text
-          style={styles.title}
+          style={[styles.title, isDanger && styles.titleDanger]}
           numberOfLines={2}
           adjustsFontSizeToFit
           minimumFontScale={0.7}
@@ -32,7 +49,10 @@ export function PrimaryCard({ title, subtitle, icon, onPress, testID }: Props) {
         </Text>
       </View>
       {subtitle ? (
-        <Text style={styles.subtitle} numberOfLines={2}>
+        <Text
+          style={[styles.subtitle, isDanger && styles.subtitleDanger]}
+          numberOfLines={2}
+        >
           {subtitle}
         </Text>
       ) : null}
@@ -52,9 +72,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...shadow.card,
   },
+  cardDanger: {
+    backgroundColor: colors.crimson,
+  },
   pressed: {
     backgroundColor: colors.surfaceMuted,
     transform: [{ scale: 0.98 }],
+  },
+  pressedDanger: {
+    backgroundColor: colors.crimsonDark,
+  },
+  disabled: {
+    opacity: 0.45,
   },
   titleRow: {
     flexDirection: 'column',
@@ -70,6 +99,9 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     ...shadow.text,
   },
+  titleDanger: {
+    color: colors.white,
+  },
   iconWrap: {
     marginBottom: spacing.xs,
   },
@@ -78,5 +110,9 @@ const styles = StyleSheet.create({
     color: colors.ink,
     textAlign: 'center',
     marginTop: spacing.xs,
+  },
+  subtitleDanger: {
+    color: colors.white,
+    opacity: 0.92,
   },
 });
