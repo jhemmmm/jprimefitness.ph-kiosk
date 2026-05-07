@@ -153,10 +153,11 @@ function ManualSetup() {
       setErr('Enter the server IP address.');
       return;
     }
+    const url = buildUrlFromIpPort(ip, port);
     setBusy(true);
     const ok = await saveManual(ip, port);
     setBusy(false);
-    if (!ok) setErr(`Could not reach http://${ip}:${port}.`);
+    if (!ok) setErr(`Could not reach ${url}.`);
   };
 
   return (

@@ -1,0 +1,13 @@
+const { withAndroidManifest } = require('@expo/config-plugins');
+
+module.exports = function withAndroidCleartext(config) {
+  return withAndroidManifest(config, (modConfig) => {
+    const application = modConfig.modResults.manifest.application?.[0];
+
+    if (application) {
+      application.$['android:usesCleartextTraffic'] = 'true';
+    }
+
+    return modConfig;
+  });
+};

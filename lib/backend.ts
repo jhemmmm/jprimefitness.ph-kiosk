@@ -76,5 +76,18 @@ function normalizeUrl(url: string): string {
 }
 
 export function buildUrlFromIpPort(ip: string, port: number | string): string {
-  return `http://${ip.trim()}:${String(port).trim()}`;
+  const rawHost = ip.trim();
+  const rawPort = String(port).trim();
+  const withScheme = /^https?:\/\//i.test(rawHost) ? rawHost : `http://${rawHost}`;
+
+  try {
+    const url = new URL(withScheme);
+    if (!url.port && rawPort) url.port = rawPort;
+    url.pathname = '';
+    url.search = '';
+    url.hash = '';
+    return normalizeUrl(url.toString());
+  } catch {
+    return normalizeUrl(`http://${rawHost}:${rawPort}`);
+  }
 }
