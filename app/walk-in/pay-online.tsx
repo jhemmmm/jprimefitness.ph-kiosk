@@ -8,7 +8,7 @@ import { CountdownRing } from "@/components/CountdownRing";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { config } from "@/lib/config";
 import { useOnce } from "@/lib/hooks";
-import { createPayment, pollPayment, PaymentIntent } from "@/lib/kiosk";
+import { createPayment, parseDiscount, pollPayment, PaymentIntent } from "@/lib/kiosk";
 import { colors, radius, shadow, spacing, typography } from "@/theme";
 
 type FinishStatus = "paid" | "timeout" | "cancelled";
@@ -33,7 +33,7 @@ function PageFrame({ children, onCancel }: { children: ReactNode; onCancel: () =
 
 export default function PayOnlineScreen() {
   const { name, phone, discount_type } = useLocalSearchParams<{ name: string; phone: string; discount_type?: string }>();
-  const discount = discount_type === "student" || discount_type === "senior" ? discount_type : null;
+  const discount = parseDiscount(discount_type);
   const [intent, setIntent] = useState<PaymentIntent | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [imageReady, setImageReady] = useState(false);

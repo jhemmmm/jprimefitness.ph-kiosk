@@ -59,11 +59,6 @@
       "./plugins/with-android-cleartext"
     ],
     "extra": {
-      "kioskToken": "3089147bac7b162e3ca760dd5bcd4e939873b6fd689a2018",
-      "idleTimeoutMs": 60000,
-      "paymentTimeoutSec": 120,
-      "resultDisplaySec": 8,
-      "liveApiUrl": "https://jprimefitness.ph",
       "router": {},
       "eas": {
         "projectId": "d4d7e245-8c45-4268-86eb-51cc51f2613b"

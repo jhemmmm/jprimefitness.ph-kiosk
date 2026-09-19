@@ -2,7 +2,7 @@
 
 A landscape-only Android tablet kiosk for the JPrime Fitness Gym entrance.
 
-- **Walk-In** — collect name + PH phone, then pay over the counter or via GCash QR (60s timer).
+- **Walk-In** — collect name + PH phone, then pay over the counter or via GCash QR (120s timer).
 - **Membership** — Time In / Time Out via member QR code scanned from the device camera.
 - Every terminal screen posts a record to `POST /api/kiosk/attendance` on the gym's Laravel backend.
 - Backend host is **auto-discovered** on the same Wi-Fi at boot. No hardcoded IP.
@@ -36,17 +36,17 @@ Open in Expo Go on an Android tablet, or press `w` for the web preview (camera f
 
 ## Configuration
 
-Static config lives in [app.json](app.json) under `expo.extra`:
+Runtime settings come from `.env` (Expo inlines `EXPO_PUBLIC_*` at build time; copy [.env.example](.env.example)). EAS builds don't see `.env`, so set the same keys as EAS environment variables.
 
 | key | default | purpose |
 |---|---|---|
-| `kioskToken` | `dev-kiosk-token` | sent as `X-Kiosk-Token` header |
-| `mockApi` | `true` | when true, all API calls resolve in-process |
-| `idleTimeoutMs` | `60000` | inactivity threshold before returning to Home |
-| `paymentTimeoutSec` | `60` | GCash QR validity window |
-| `resultDisplaySec` | `8` | result screen auto-redirect countdown |
+| `EXPO_PUBLIC_KIOSK_TOKEN` | `dev-kiosk-token` | sent as `X-Kiosk-Token`; must match `KIOSK_TOKEN` in the backend `.env` |
+| `EXPO_PUBLIC_IDLE_TIMEOUT_MS` | `60000` | inactivity threshold before returning to Home |
+| `EXPO_PUBLIC_PAYMENT_TIMEOUT_SEC` | `120` | online-payment QR validity window |
+| `EXPO_PUBLIC_RESULT_DISPLAY_SEC` | `8` | result screen auto-redirect countdown |
+| `EXPO_PUBLIC_LIVE_API_URL` | *(blank)* | public backend URL for online payments; blank = discovered LAN URL |
 
-Read at runtime in [lib/config.ts](lib/config.ts) via `expo-constants`.
+Read at build time in [lib/config.ts](lib/config.ts).
 
 **Backend URL is NOT in config.** It is discovered at boot by [lib/discovery.ts](lib/discovery.ts) (subnet `/24` HTTP probe at port 8000), cached in AsyncStorage by [lib/backend.ts](lib/backend.ts), and gated by [lib/BackendProvider.tsx](lib/BackendProvider.tsx). Discovery probe targets `GET /api/kiosk/discover`, which must return `{ "service": "jprimefitness-kiosk-api", "version": "1", "serverId": "<uuid>" }`. Manual IP entry screen appears if discovery fails.
 
@@ -59,7 +59,7 @@ app/                      # expo-router screens
 ├── walk-in/
 │   ├── form.tsx          # name + phone (zod-validated)
 │   ├── payment-method.tsx
-│   ├── pay-online.tsx    # GCash QR + 60s countdown
+│   ├── pay-online.tsx    # GCash QR + 120s countdown
 │   └── success.tsx       # counter success
 ├── member/
 │   ├── action.tsx        # Time In / Time Out
@@ -68,9 +68,9 @@ app/                      # expo-router screens
 
 components/               # BrandHeader, PrimaryCard, PrimaryButton, ScannerFrame, CountdownRing, icons
 lib/
-├── config.ts             # static config from app.json
+├── config.ts             # runtime settings from .env
 ├── api.ts                # fetch wrapper + token header
-├── kiosk.ts              # API contract types + mocks
+├── kiosk.ts              # API contract types + calls
 ├── session.ts            # idle reset + goHome
 ├── discovery.ts          # LAN /24 subnet scan
 ├── backend.ts            # runtime URL holder + AsyncStorage cache
@@ -121,12 +121,10 @@ Failure: `{ "ok": false, "message": "Unknown QR code" }`. Result screen branches
 
 All requests except `/discover` include `X-Kiosk-Token: <kioskToken>`.
 
-## Test the flows (with mocks)
-
-Set `extra.mockApi: true` in [app.json](app.json) to bypass network. Discovery still runs; flows resolve in-process.
+## Test the flows
 
 - **Walk-In → Counter**: name `Juan Dela Cruz` + phone `09171234567` → Continue → Over the Counter → "PROCEED TO THE COUNTER" success.
-- **Walk-In → Online**: same form → Pay Online → mock resolves to `paid` after ~5s → ACCESS GRANTED. Wait the full 60s → ACCESS DENIED.
+- **Walk-In → Online**: same form → Pay Online → pay the QR → ACCESS GRANTED. Let the 120s timer run out → ACCESS DENIED.
 - **Membership**: Membership → Time In → grant camera → scan a QR with payload `JPRIME:<anything>` → "Welcome back, …". Any other QR → ACCESS DENIED.
 - **Idle reset**: leave any inner screen untouched 60s → returns to Home.
 - **Result screen auto-redirect**: result/success screens count down `resultDisplaySec` then return to Home.

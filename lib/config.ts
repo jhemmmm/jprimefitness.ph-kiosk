@@ -1,6 +1,6 @@
-import Constants from 'expo-constants';
-
-type Extra = {
+// All runtime settings come from .env (EXPO_PUBLIC_*, inlined by Expo at build
+// time — EAS builds must set them as environment variables). Blank = default below.
+type Config = {
   kioskToken: string;
   idleTimeoutMs: number;
   paymentTimeoutSec: number;
@@ -12,20 +12,15 @@ type Extra = {
   liveApiUrl: string;
 };
 
-const fallback: Extra = {
-  kioskToken: 'dev-kiosk-token',
-  idleTimeoutMs: 60_000,
-  paymentTimeoutSec: 120,
-  resultDisplaySec: 8,
-  liveApiUrl: '',
-};
+function number(value: string | undefined, fallback: number): number {
+  const parsed = Number(value);
+  return value && Number.isFinite(parsed) ? parsed : fallback;
+}
 
-const raw = (Constants.expoConfig?.extra ?? {}) as Partial<Extra>;
-
-export const config: Extra = {
-  kioskToken: raw.kioskToken ?? fallback.kioskToken,
-  idleTimeoutMs: raw.idleTimeoutMs ?? fallback.idleTimeoutMs,
-  paymentTimeoutSec: raw.paymentTimeoutSec ?? fallback.paymentTimeoutSec,
-  resultDisplaySec: raw.resultDisplaySec ?? fallback.resultDisplaySec,
-  liveApiUrl: (raw.liveApiUrl ?? fallback.liveApiUrl).replace(/\/+$/, ''),
+export const config: Config = {
+  kioskToken: process.env.EXPO_PUBLIC_KIOSK_TOKEN || 'dev-kiosk-token',
+  idleTimeoutMs: number(process.env.EXPO_PUBLIC_IDLE_TIMEOUT_MS, 60_000),
+  paymentTimeoutSec: number(process.env.EXPO_PUBLIC_PAYMENT_TIMEOUT_SEC, 120),
+  resultDisplaySec: number(process.env.EXPO_PUBLIC_RESULT_DISPLAY_SEC, 8),
+  liveApiUrl: (process.env.EXPO_PUBLIC_LIVE_API_URL || '').replace(/\/+$/, ''),
 };

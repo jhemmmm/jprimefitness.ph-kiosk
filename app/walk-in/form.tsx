@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { z } from "zod";
 import { BrandHeader } from "@/components/BrandHeader";
 import { PrimaryButton } from "@/components/PrimaryButton";
+import { DISCOUNT_LABELS, DiscountType } from "@/lib/kiosk";
 import { colors, radius, spacing, typography } from "@/theme";
 
 const phoneRe = /^(?:\+63|0)9\d{9}$/;
@@ -14,7 +15,12 @@ const schema = z.object({
   phone: z.string().trim().regex(phoneRe, "Use a PH number like 09171234567 or +639171234567."),
 });
 
-type DiscountChoice = "" | "student" | "senior";
+type DiscountChoice = "" | DiscountType;
+
+const DISCOUNT_OPTIONS: { value: DiscountChoice; label: string }[] = [
+  { value: "", label: "None" },
+  ...(Object.keys(DISCOUNT_LABELS) as DiscountType[]).map((value) => ({ value, label: DISCOUNT_LABELS[value] })),
+];
 
 export default function WalkInFormScreen() {
   const [name, setName] = useState("");
@@ -59,11 +65,7 @@ export default function WalkInFormScreen() {
               <Text style={styles.fieldLabel}>Discount</Text>
               <Text style={styles.fieldHint}>Staff will check your ID at the counter — cash payment only.</Text>
               <View style={styles.discountRow}>
-                {([
-                  { value: "" as DiscountChoice, label: "None" },
-                  { value: "student" as DiscountChoice, label: "Student" },
-                  { value: "senior" as DiscountChoice, label: "Senior" },
-                ]).map((opt) => {
+                {DISCOUNT_OPTIONS.map((opt) => {
                   const active = discount === opt.value;
                   return (
                     <Pressable

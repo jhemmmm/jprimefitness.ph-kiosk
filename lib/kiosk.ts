@@ -27,7 +27,14 @@ export type MemberPayload = {
 
 export type AttendancePayload = WalkInPayload | MemberPayload;
 
-export type DiscountType = 'student' | 'senior';
+export type DiscountType = 'student' | 'senior' | 'pwd';
+
+export const DISCOUNT_LABELS: Record<DiscountType, string> = { student: 'Student', senior: 'Senior citizen', pwd: 'PWD' };
+
+// Route params arrive as strings; keep only the discounts the backend accepts.
+export function parseDiscount(value: unknown): DiscountType | null {
+  return typeof value === 'string' && value in DISCOUNT_LABELS ? (value as DiscountType) : null;
+}
 
 export type PaymentIntent = {
   reference: string;

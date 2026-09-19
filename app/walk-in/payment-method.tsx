@@ -5,11 +5,12 @@ import { BrandHeader } from "@/components/BrandHeader";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { PrimaryCard } from "@/components/PrimaryCard";
 import { CounterIcon, OnlinePayIcon } from "@/components/icons";
+import { parseDiscount } from "@/lib/kiosk";
 import { colors, spacing, typography } from "@/theme";
 
 export default function PaymentMethodScreen() {
   const { name, phone, discount_type } = useLocalSearchParams<{ name: string; phone: string; discount_type?: string }>();
-  const discount = discount_type === "student" || discount_type === "senior" ? discount_type : "";
+  const discount = parseDiscount(discount_type) ?? "";
   const onlineDisabled = discount !== "";
 
   const choose = (method: "counter" | "online") => {

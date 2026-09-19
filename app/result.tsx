@@ -4,7 +4,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CheckIcon, CrossIcon } from "@/components/icons";
 import { PrimaryButton } from "@/components/PrimaryButton";
-import { AttendancePayload, AttendanceResponse, postAttendance } from "@/lib/kiosk";
+import { AttendancePayload, AttendanceResponse, parseDiscount, postAttendance } from "@/lib/kiosk";
 import { config } from "@/lib/config";
 import { useAutoRedirectHome, useOnce } from "@/lib/hooks";
 import { colors, radius, spacing, typography } from "@/theme";
@@ -125,7 +125,7 @@ function buildPayload(p: Params, flow: Flow): AttendancePayload {
       qr_payload: p.qr_payload ?? "",
     };
   }
-  const discount = p.discount_type === "student" || p.discount_type === "senior" ? p.discount_type : null;
+  const discount = parseDiscount(p.discount_type);
   return {
     type: "walk_in",
     status: p.status === "success" ? "success" : "failed",

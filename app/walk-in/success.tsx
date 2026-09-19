@@ -4,7 +4,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CheckIcon } from "@/components/icons";
 import { PrimaryButton } from "@/components/PrimaryButton";
-import { createPayment, postAttendance } from "@/lib/kiosk";
+import { createPayment, DISCOUNT_LABELS, parseDiscount, postAttendance } from "@/lib/kiosk";
 import { config } from "@/lib/config";
 import { useAutoRedirectHome, useOnce } from "@/lib/hooks";
 import { colors, radius, spacing, typography } from "@/theme";
@@ -19,7 +19,7 @@ export default function CounterSuccessScreen() {
     phone: string;
     discount_type?: string;
   }>();
-  const discount = discount_type === "student" || discount_type === "senior" ? discount_type : null;
+  const discount = parseDiscount(discount_type);
   const [posting, setPosting] = useState(true);
   const [postError, setPostError] = useState<string | null>(null);
   const [reference, setReference] = useState<string | null>(null);
@@ -78,7 +78,7 @@ export default function CounterSuccessScreen() {
           <View style={styles.amountBox}>
             <Text style={styles.amountLabel}>Amount due</Text>
             <Text style={styles.amountValue}>{formatAmount(amountDue)}</Text>
-            {discount ? <Text style={styles.amountBadge}>{discount === "student" ? "Student" : "Senior"} −20% applied</Text> : null}
+            {discount ? <Text style={styles.amountBadge}>{DISCOUNT_LABELS[discount]} −20% applied</Text> : null}
             {reference ? <Text style={styles.refValue}>Ref: {reference}</Text> : null}
           </View>
         ) : null}
