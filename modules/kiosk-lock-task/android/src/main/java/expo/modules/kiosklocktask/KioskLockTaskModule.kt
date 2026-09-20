@@ -1,5 +1,6 @@
 package expo.modules.kiosklocktask
 
+import android.app.Activity
 import android.app.ActivityManager
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
@@ -7,8 +8,14 @@ import android.content.Context
 import android.os.Build
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import java.lang.ref.WeakReference
 
 class KioskLockTaskModule : Module() {
+  companion object {
+    // Last activity that entered lock task; used by KioskUnlockReceiver.
+    var activityRef: WeakReference<Activity>? = null
+  }
+
   override fun definition() = ModuleDefinition {
     Name("KioskLockTask")
 
@@ -19,6 +26,7 @@ class KioskLockTaskModule : Module() {
       if (dpm.isDeviceOwnerApp(activity.packageName)) {
         dpm.setLockTaskPackages(admin, arrayOf(activity.packageName))
       }
+      activityRef = WeakReference(activity)
       activity.runOnUiThread { activity.startLockTask() }
       true
     }

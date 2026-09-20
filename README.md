@@ -225,15 +225,15 @@ adb shell dpm list-owners
 # → Device Owner: ph.jprimefitness.kiosk/...
 ```
 
-##### 6. (Optional) Set kiosk as default launcher
+##### 6. Set kiosk as the home app (also auto-starts on boot)
 
-Pressing Home should land back in the kiosk. If a stock launcher still appears:
+`MainActivity` claims `CATEGORY_HOME` via [plugins/with-android-home.js](plugins/with-android-home.js). Make it the default:
 
 ```bash
 adb shell cmd package set-home-activity ph.jprimefitness.kiosk/.MainActivity
 ```
 
-(Activity class name may differ — check `AndroidManifest.xml` after prebuild.) Alternatively the app can claim the `CATEGORY_HOME` intent filter via a config plugin — out of scope here.
+Home button → kiosk, and Android launches the home app on boot, so no boot receiver is needed. Verify with `adb reboot`.
 
 ##### 7. (Optional) Disable lock screen
 
@@ -241,11 +241,33 @@ adb shell cmd package set-home-activity ph.jprimefitness.kiosk/.MainActivity
 adb shell locksettings set-disabled true
 ```
 
-Or via Settings → Security → Screen lock → None (only available because Device Owner unlocks the option).
+Or via Settings → Security → Screen lock → None (only available because Device Owner unlocks the option). Required for auto-start to land in the app instead of on a PIN screen.
 
-##### 8. (Optional) Auto-launch on boot
+##### 8. (Optional) Debloat + tune
 
-Add `RECEIVE_BOOT_COMPLETED` permission + a boot receiver. Out of scope here. Easiest workaround: enable Settings → System → Auto-restart with `dpm` policy or use a third-party "Kiosk Browser" wrapper.
+[scripts/kiosk-device.sh](scripts/kiosk-device.sh) — `debloat` disables ~80 stock apps (YouTube, Bixby, Galaxy Store, Play Store, Samsung account, FOTA updater…); `tune` sets screen-always-on while plugged, manual brightness, no rotation, faster animations, Doze exemption and Samsung's 85% charge cap. Both are reversible (`restore`, or `pm enable <pkg>`).
+
+```bash
+scripts/kiosk-device.sh debloat
+scripts/kiosk-device.sh tune
+```
+
+#### Temporarily exit kiosk mode (maintenance)
+
+Device-Owner lock task can't be broken from adb (`am task lock stop` and `force-stop` are refused), so the app exposes an unlock broadcast, gated to a shell-only permission ([KioskUnlockReceiver.kt](modules/kiosk-lock-task/android/src/main/java/expo/modules/kiosklocktask/KioskUnlockReceiver.kt)):
+
+```bash
+# unlock: leave lock task, hand Home back to the stock launcher
+adb shell am broadcast -a ph.jprimefitness.kiosk.UNLOCK -n ph.jprimefitness.kiosk/expo.modules.kiosklocktask.KioskUnlockReceiver
+adb shell cmd package set-home-activity com.sec.android.app.launcher/.activities.LauncherActivity
+
+# ...do your thing (Settings, Wi-Fi, install APK, etc.)...
+
+# relock: kiosk is Home again, restart it so startLockTask() runs on mount
+adb shell cmd package set-home-activity ph.jprimefitness.kiosk/.MainActivity
+adb shell am force-stop ph.jprimefitness.kiosk
+adb shell am start -n ph.jprimefitness.kiosk/.MainActivity
+```
 
 #### Removing kiosk mode
 

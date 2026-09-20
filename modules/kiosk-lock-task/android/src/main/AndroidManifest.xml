@@ -11,5 +11,13 @@
         <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
       </intent-filter>
     </receiver>
+    <receiver
+      android:name="expo.modules.kiosklocktask.KioskUnlockReceiver"
+      android:permission="android.permission.WRITE_SECURE_SETTINGS"
+      android:exported="true">
+      <intent-filter>
+        <action android:name="ph.jprimefitness.kiosk.UNLOCK" />
+      </intent-filter>
+    </receiver>
   </application>
 </manifest>
