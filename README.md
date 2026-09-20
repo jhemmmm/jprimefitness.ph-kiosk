@@ -36,7 +36,11 @@ Open in Expo Go on an Android tablet, or press `w` for the web preview (camera f
 
 ## Configuration
 
-Runtime settings come from `.env` (Expo inlines `EXPO_PUBLIC_*` at build time; copy [.env.example](.env.example)). EAS builds don't see `.env`, so set the same keys as EAS environment variables.
+Runtime settings come from `.env` (Expo inlines `EXPO_PUBLIC_*` at build time; copy [.env.example](.env.example)). EAS builds don't see `.env`, so push it to the EAS environment first — a build without these gets `dev-kiosk-token` and every QR scan fails with `401 Invalid kiosk token`:
+
+```bash
+eas env:push --environment production --path .env
+```
 
 | key | default | purpose |
 |---|---|---|
@@ -134,11 +138,13 @@ On web, the scanner shows two buttons that simulate a known and an unknown QR.
 ## Build for Android (kiosk APK)
 
 ```bash
-npx expo prebuild --clean
 npm install -g eas-cli
 eas login
+eas env:push --environment production --path .env   # re-run whenever .env changes
 eas build -p android --profile production
 ```
+
+Download the APK from the build page and `adb install -r` it. The tablet is locked to the EAS keystore once a Device-Owner build is installed — local Gradle builds (debug keystore) can't replace it.
 
 ### Lock-task / kiosk mode
 

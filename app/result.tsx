@@ -63,7 +63,7 @@ export default function ResultScreen() {
 
   const phase = derivePhase({ flow, posting, response, params });
   const headline = HEADLINES[phase];
-  const subline = buildSubline({ flow, phase, params, response });
+  const subline = buildSubline({ flow, phase, params, response, postError });
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -138,10 +138,12 @@ function buildPayload(p: Params, flow: Flow): AttendancePayload {
   };
 }
 
-function buildSubline(args: { flow: Flow; phase: Phase; params: Params; response: AttendanceResponse | null }): { primary: string; secondary?: string } {
-  const { flow, phase, params, response } = args;
+function buildSubline(args: { flow: Flow; phase: Phase; params: Params; response: AttendanceResponse | null; postError: string | null }): { primary: string; secondary?: string } {
+  const { flow, phase, params, response, postError } = args;
   if (flow === "member") {
     if (phase === "pending") return { primary: "Verifying QR code…" };
+    // Transport/auth failure is a kiosk setup problem, not a bad QR — say so.
+    if (postError) return { primary: "Could not verify with server", secondary: "Please ask the front desk for assistance." };
     if (phase === "success") {
       const verb = params.action === "time_out" ? "Goodbye" : "Welcome back";
       const who = response?.member_name ?? "member";

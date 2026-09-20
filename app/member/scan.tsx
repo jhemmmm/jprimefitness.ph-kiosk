@@ -79,7 +79,7 @@ export default function MemberScanScreen() {
             <CameraView style={StyleSheet.absoluteFill} facing="front" barcodeScannerSettings={{ barcodeTypes: ["qr"] }} onBarcodeScanned={scanning ? ({ data }) => handleScan(data) : undefined} />
           </View>
           <View style={styles.frameOverlay} pointerEvents="none">
-            <ScannerFrame size={240} color={colors.ink} thickness={10} />
+            <ScannerFrame size={340} color={colors.ink} thickness={12} />
           </View>
         </View>
 
@@ -121,8 +121,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   scannerStage: {
-    width: 280,
-    height: 280,
+    width: 400,
+    height: 400,
     alignItems: "center",
     justifyContent: "center",
   },
