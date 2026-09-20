@@ -1,6 +1,6 @@
 import * as Network from 'expo-network';
 
-const PORT = 8000;
+const PORT = 8001;
 const PROBE_PATH = '/api/kiosk/discover';
 const SERVICE_NAME = 'jprimefitness-kiosk-api';
 const PROBE_TIMEOUT_MS = 800;

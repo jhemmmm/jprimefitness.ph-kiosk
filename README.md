@@ -48,7 +48,7 @@ Runtime settings come from `.env` (Expo inlines `EXPO_PUBLIC_*` at build time; c
 
 Read at build time in [lib/config.ts](lib/config.ts).
 
-**Backend URL is NOT in config.** It is discovered at boot by [lib/discovery.ts](lib/discovery.ts) (subnet `/24` HTTP probe at port 8000), cached in AsyncStorage by [lib/backend.ts](lib/backend.ts), and gated by [lib/BackendProvider.tsx](lib/BackendProvider.tsx). Discovery probe targets `GET /api/kiosk/discover`, which must return `{ "service": "jprimefitness-kiosk-api", "version": "1", "serverId": "<uuid>" }`. Manual IP entry screen appears if discovery fails.
+**Backend URL is NOT in config.** It is discovered at boot by [lib/discovery.ts](lib/discovery.ts) (subnet `/24` HTTP probe at port 8001), cached in AsyncStorage by [lib/backend.ts](lib/backend.ts), and gated by [lib/BackendProvider.tsx](lib/BackendProvider.tsx). Discovery probe targets `GET /api/kiosk/discover`, which must return `{ "service": "jprimefitness-kiosk-api", "version": "1", "serverId": "<uuid>" }`. Manual IP entry screen appears if discovery fails.
 
 ## Project layout
 

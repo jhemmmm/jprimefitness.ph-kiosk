@@ -143,7 +143,7 @@ export function BackendProvider({ children }: { children: ReactNode }) {
 function ManualSetup() {
   const { rescan, saveManual } = useBackend();
   const [ip, setIp] = useState('');
-  const [port, setPort] = useState('8000');
+  const [port, setPort] = useState('8001');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -187,7 +187,7 @@ function ManualSetup() {
           <TextInput
             value={port}
             onChangeText={setPort}
-            placeholder="8000"
+            placeholder="8001"
             placeholderTextColor={colors.textMuted}
             keyboardType="numeric"
             autoCorrect={false}
