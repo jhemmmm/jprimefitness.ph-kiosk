@@ -245,12 +245,14 @@ Or via Settings → Security → Screen lock → None (only available because De
 
 ##### 8. (Optional) Debloat + tune
 
-[scripts/kiosk-device.sh](scripts/kiosk-device.sh) — `debloat` disables ~80 stock apps (YouTube, Bixby, Galaxy Store, Play Store, Samsung account, FOTA updater…); `tune` sets screen-always-on while plugged, manual brightness, no rotation, faster animations, Doze exemption and Samsung's 85% charge cap. Both are reversible (`restore`, or `pm enable <pkg>`).
+[scripts/kiosk-device.sh](scripts/kiosk-device.sh) — `debloat` disables ~80 stock apps (YouTube, Bixby, Galaxy Store, Play Store, Samsung account, FOTA updater…); `tune` sets screen-always-on while plugged, manual brightness, locked landscape, faster animations, Doze exemption and Samsung's 85% charge cap. Both are reversible (`restore`, or `pm enable <pkg>`).
 
 ```bash
 scripts/kiosk-device.sh debloat
 scripts/kiosk-device.sh tune
 ```
+
+> Samsung tablets ship with `ignoreOrientationRequest=true`, which makes Android ignore the app's landscape lock (app renders portrait and letterboxed). `tune` turns it off with `wm set-ignore-orientation-request false` and pins system rotation to landscape (`user_rotation 1`; use `3` if the mount is the other way round).
 
 #### Temporarily exit kiosk mode (maintenance)
 

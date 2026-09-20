@@ -63,6 +63,8 @@ case "${1:-}" in
       settings put system screen_off_timeout 2147483647
       settings put system screen_brightness_mode 0
       settings put system accelerometer_rotation 0
+      settings put system user_rotation 1
+      wm set-ignore-orientation-request false
       settings put global window_animation_scale 0.5
       settings put global transition_animation_scale 0.5
       settings put global animator_duration_scale 0.5
@@ -72,6 +74,6 @@ case "${1:-}" in
       settings put global heads_up_notifications_enabled 0
       settings put global wifi_sleep_policy 2
       cmd deviceidle whitelist +$PKG
-    " && echo "tuned: screen always on while plugged, manual brightness, no rotation, faster animations, Doze-exempt, charge capped at 85%" ;;
+    " && echo "tuned: screen always on while plugged, manual brightness, locked landscape, faster animations, Doze-exempt, charge capped at 85%" ;;
   *) sed -n 2,5p "$0"; exit 1 ;;
 esac
