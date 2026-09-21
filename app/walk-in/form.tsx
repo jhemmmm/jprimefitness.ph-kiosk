@@ -63,7 +63,7 @@ export default function WalkInFormScreen() {
 
             <View style={styles.fieldWrap}>
               <Text style={styles.fieldLabel}>Discount</Text>
-              <Text style={styles.fieldHint}>Staff will check your ID at the counter — cash payment only.</Text>
+              <Text style={styles.fieldHint}>Staff at the front desk will check your ID.</Text>
               <View style={styles.discountRow}>
                 {DISCOUNT_OPTIONS.map((opt) => {
                   const active = discount === opt.value;

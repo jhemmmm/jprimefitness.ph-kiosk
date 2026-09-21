@@ -20,6 +20,7 @@ import { BrandHeader } from '@/components/BrandHeader';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import {
   buildUrlFromIpPort,
+  clearApiBaseUrl,
   getApiBaseUrlOrNull,
   loadCached,
   setApiBaseUrl,
@@ -89,6 +90,28 @@ export function BackendProvider({ children }: { children: ReactNode }) {
     startedRef.current = false;
     void runDiscovery();
   }, [runDiscovery]);
+
+  // Heartbeat: probe the LAN backend every 15s while ready; two misses → drop it,
+  // which triggers rediscovery via the subscribe() effect above.
+  useEffect(() => {
+    if (phase !== 'ready') return;
+    let misses = 0;
+    const id = setInterval(async () => {
+      const url = getApiBaseUrlOrNull();
+      if (!url) return;
+      const r = await probeUrl(url, 3000);
+      misses = r.ok ? 0 : misses + 1;
+      if (misses >= 2) clearApiBaseUrl();
+    }, 15_000);
+    return () => clearInterval(id);
+  }, [phase]);
+
+  // While the server is missing, retry discovery every 30s so it reconnects on its own.
+  useEffect(() => {
+    if (phase !== 'needs-manual') return;
+    const id = setTimeout(rescan, 30_000);
+    return () => clearTimeout(id);
+  }, [phase, rescan]);
 
   const saveManual = useCallback(
     async (ip: string, port: string): Promise<boolean> => {

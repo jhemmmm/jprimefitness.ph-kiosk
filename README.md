@@ -48,7 +48,7 @@ eas env:push --environment production --path .env
 | `EXPO_PUBLIC_IDLE_TIMEOUT_MS` | `60000` | inactivity threshold before returning to Home |
 | `EXPO_PUBLIC_PAYMENT_TIMEOUT_SEC` | `120` | online-payment QR validity window |
 | `EXPO_PUBLIC_RESULT_DISPLAY_SEC` | `8` | result screen auto-redirect countdown |
-| `EXPO_PUBLIC_LIVE_API_URL` | *(blank)* | public backend URL for online payments; blank = discovered LAN URL |
+| `EXPO_PUBLIC_LIVE_API_URL` | *(blank)* | public backend URL for online payments and the attendance POST of an online walk-in (the paid `kiosk_payments` row lives there); blank = discovered LAN URL |
 
 Read at build time in [lib/config.ts](lib/config.ts).
 

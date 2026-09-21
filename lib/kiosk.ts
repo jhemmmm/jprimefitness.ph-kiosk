@@ -49,17 +49,21 @@ export type PaymentIntent = {
 
 export type PaymentStatus = 'pending' | 'paid' | 'expired';
 
-export async function postAttendance(
-  payload: AttendancePayload,
-): Promise<AttendanceResponse> {
-  return api.post<AttendanceResponse>('/api/kiosk/attendance', payload);
-}
-
 // Online-payment calls must round-trip through the same backend PayMongo's
 // webhook can reach. If liveApiUrl is set, route there; otherwise fall back to
 // the discovered LAN URL (e.g. when ngrok-tunneling a local backend in dev).
 function paymentRequestOpts(): { baseUrl?: string } | undefined {
   return config.liveApiUrl ? { baseUrl: config.liveApiUrl } : undefined;
+}
+
+export async function postAttendance(
+  payload: AttendancePayload,
+): Promise<AttendanceResponse> {
+  // An online walk-in consumes the kiosk_payments row, which only exists (as
+  // "paid") on the live backend — the LAN node's synced copy lags or is missing.
+  // Everything else (members, counter walk-ins) stays on the LAN node.
+  const online = payload.type === 'walk_in' && payload.payment_method === 'online';
+  return api.post<AttendanceResponse>('/api/kiosk/attendance', payload, online ? paymentRequestOpts() : undefined);
 }
 
 export async function createPayment(args: {

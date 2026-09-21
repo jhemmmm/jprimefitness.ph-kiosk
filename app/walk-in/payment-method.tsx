@@ -11,7 +11,6 @@ import { colors, spacing, typography } from "@/theme";
 export default function PaymentMethodScreen() {
   const { name, phone, discount_type } = useLocalSearchParams<{ name: string; phone: string; discount_type?: string }>();
   const discount = parseDiscount(discount_type) ?? "";
-  const onlineDisabled = discount !== "";
 
   const choose = (method: "counter" | "online") => {
     if (method === "counter") {
@@ -20,7 +19,6 @@ export default function PaymentMethodScreen() {
         params: { name, phone, method: "counter", discount_type: discount },
       });
     } else {
-      if (onlineDisabled) return;
       router.replace({
         pathname: "/walk-in/pay-online",
         params: { name, phone, discount_type: discount },
@@ -38,18 +36,16 @@ export default function PaymentMethodScreen() {
         <Text style={styles.title}>Choose Payment Method</Text>
         <Text style={styles.subtitle}>
           How would you like to pay, {name}?
-          {onlineDisabled ? "  Online is unavailable — staff must verify your ID at the counter." : ""}
         </Text>
 
         <View style={styles.cards}>
           <PrimaryCard title="Over the Counter" subtitle="Pay cash at the front desk" icon={<CounterIcon size={48} />} onPress={() => choose("counter")} testID="pay-counter" />
           <PrimaryCard
             title="Pay Online"
-            subtitle={onlineDisabled ? "Disabled for ID-verified discounts" : "Scan QR Ph with any bank or e-wallet"}
+            subtitle="Scan QR Ph with any bank or e-wallet"
             icon={<OnlinePayIcon size={48} color={colors.white} />}
             onPress={() => choose("online")}
             tone="danger"
-            disabled={onlineDisabled}
             testID="pay-online"
           />
         </View>
