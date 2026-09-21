@@ -1,7 +1,7 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BrandHeader } from "@/components/BrandHeader";
 import { PrimaryButton } from "@/components/PrimaryButton";
@@ -15,6 +15,8 @@ export default function MemberScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanning, setScanning] = useState(true);
   const handledRef = useRef(false);
+  // Camera takes ~60% of screen height; Cancel sits at the bottom via marginTop: "auto".
+  const stage = Math.round(useWindowDimensions().height * 0.6);
 
   useEffect(() => {
     if (permission && !permission.granted && permission.canAskAgain) {
@@ -74,12 +76,12 @@ export default function MemberScanScreen() {
 
         <Text style={styles.cue}>Place your QR here</Text>
 
-        <View style={styles.scannerStage}>
+        <View style={[styles.scannerStage, { width: stage, height: stage }]}>
           <View style={styles.cameraWrap}>
             <CameraView style={StyleSheet.absoluteFill} facing="front" barcodeScannerSettings={{ barcodeTypes: ["qr"] }} onBarcodeScanned={scanning ? ({ data }) => handleScan(data) : undefined} />
           </View>
           <View style={styles.frameOverlay} pointerEvents="none">
-            <ScannerFrame size={340} color={colors.ink} thickness={12} />
+            <ScannerFrame size={Math.round(stage * 0.85)} color={colors.ink} thickness={12} />
           </View>
         </View>
 
@@ -121,8 +123,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   scannerStage: {
-    width: 400,
-    height: 400,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   cancel: {
-    marginTop: spacing.lg,
-    minWidth: 240,
+    marginTop: "auto",
+    minWidth: 280,
   },
 });

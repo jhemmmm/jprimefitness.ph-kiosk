@@ -58,8 +58,8 @@ export function PrimaryButton({
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: 52,
-    paddingHorizontal: spacing.lg,
+    minHeight: 64,
+    paddingHorizontal: spacing.xl,
     paddingVertical: spacing.sm,
     borderRadius: radius.md,
     alignItems: 'center',
@@ -84,6 +84,7 @@ const styles = StyleSheet.create({
   },
   label: {
     ...typography.caps,
+    fontSize: 17,
   },
   labelPrimary: {
     color: colors.white,
