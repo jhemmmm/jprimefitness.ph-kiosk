@@ -72,7 +72,11 @@ export async function createPayment(args: {
   method?: 'online' | 'cash';
   discount_type?: DiscountType | null;
 }): Promise<PaymentIntent> {
-  return api.post<PaymentIntent>('/api/kiosk/payments', args, paymentRequestOpts());
+  // Only an online intent needs the public host (PayMongo webhook + polling).
+  // A cash intent is just amount + reference, so keep it on the LAN node —
+  // same backend the counter attendance row goes to, and no internet round-trip.
+  const opts = args.method === 'online' ? paymentRequestOpts() : undefined;
+  return api.post<PaymentIntent>('/api/kiosk/payments', args, opts);
 }
 
 export async function pollPayment(reference: string): Promise<PaymentStatus> {

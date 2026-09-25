@@ -35,7 +35,12 @@ export default function CounterSuccessScreen() {
         setAmountDue(pi.amount);
         return pi.reference;
       })
-      .catch(() => null)
+      .catch(() => {
+        // Don't block the visit record on the intent — but say so, otherwise a
+        // failed intent looks identical to a success with no amount.
+        if (!cancelled) setPostError("Amount unavailable — please ask the counter.");
+        return null;
+      })
       .then((ref) =>
         postAttendance({
           type: "walk_in",
