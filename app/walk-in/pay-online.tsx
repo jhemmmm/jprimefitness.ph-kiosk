@@ -8,6 +8,7 @@ import { CountdownRing } from "@/components/CountdownRing";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { config } from "@/lib/config";
 import { useOnce } from "@/lib/hooks";
+import { useKioskSession } from "@/lib/session";
 import { createPayment, parseDiscount, pollPayment, PaymentIntent } from "@/lib/kiosk";
 import { colors, radius, shadow, spacing, typography } from "@/theme";
 
@@ -38,6 +39,11 @@ export default function PayOnlineScreen() {
   const [error, setError] = useState<string | null>(null);
   const [imageReady, setImageReady] = useState(false);
   const settledRef = useRef(false);
+  const { holdIdle } = useKioskSession();
+
+  // The payer is on their phone, not touching the kiosk: the CountdownRing is this screen's
+  // deadline, so the global idle timer must not send the kiosk home mid-payment.
+  useEffect(holdIdle, [holdIdle]);
 
   useOnce(() => {
     let cancelled = false;

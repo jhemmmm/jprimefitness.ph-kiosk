@@ -14,12 +14,14 @@ import { config } from './config';
 type SessionCtx = {
   resetIdle: () => void;
   goHome: () => void;
+  holdIdle: () => () => void;
 };
 
 const Ctx = createContext<SessionCtx | null>(null);
 
 export function KioskSessionProvider({ children }: { children: ReactNode }) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const holdsRef = useRef(0);
 
   const goHome = useCallback(() => {
     try {
@@ -31,6 +33,7 @@ export function KioskSessionProvider({ children }: { children: ReactNode }) {
 
   const resetIdle = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
+    if (holdsRef.current > 0) return;
     timerRef.current = setTimeout(() => {
       goHome();
     }, config.idleTimeoutMs);
@@ -43,7 +46,17 @@ export function KioskSessionProvider({ children }: { children: ReactNode }) {
     };
   }, [resetIdle]);
 
-  const value = useMemo(() => ({ resetIdle, goHome }), [resetIdle, goHome]);
+  // A screen with its own deadline (e.g. the payment QR) pauses the idle timer; returns the release.
+  const holdIdle = useCallback(() => {
+    holdsRef.current++;
+    resetIdle();
+    return () => {
+      holdsRef.current--;
+      resetIdle();
+    };
+  }, [resetIdle]);
+
+  const value = useMemo(() => ({ resetIdle, goHome, holdIdle }), [resetIdle, goHome, holdIdle]);
   return createElement(Ctx.Provider, { value }, children);
 }
 
@@ -53,6 +66,7 @@ export function useKioskSession(): SessionCtx {
     return {
       resetIdle: () => {},
       goHome: () => {},
+      holdIdle: () => () => {},
     };
   }
   return ctx;
