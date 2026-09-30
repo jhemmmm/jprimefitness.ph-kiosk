@@ -18,15 +18,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandHeader } from '@/components/BrandHeader';
 import { PrimaryButton } from '@/components/PrimaryButton';
-import {
-  buildUrlFromIpPort,
-  clearApiBaseUrl,
-  getApiBaseUrlOrNull,
-  loadCached,
-  setApiBaseUrl,
-  subscribe,
-} from './backend';
+import { buildUrlFromIpPort, loadCached, setApiBaseUrl } from './backend';
 import { discoverBackend, probeUrl } from './discovery';
+import { flushOutbox } from './kiosk';
 import { colors, radius, spacing, typography } from '@/theme';
 
 type Phase = 'scanning' | 'ready' | 'needs-manual';
@@ -49,22 +43,24 @@ export function BackendProvider({ children }: { children: ReactNode }) {
   const [phase, setPhase] = useState<Phase>('scanning');
   const startedRef = useRef(false);
 
+  // Scans once per app start (cached IP is probed first as the hint). No runtime
+  // heartbeat: if the server is down later, walk-ins queue offline (lib/kiosk.ts).
+  // Network changed? Restart the device.
   const runDiscovery = useCallback(async () => {
     setPhase('scanning');
 
     const cached = await loadCached();
-    if (cached?.url) {
-      const r = await probeUrl(cached.url, 1500);
-      if (r.ok) {
-        setApiBaseUrl(r.url, r.serverId);
-        setPhase('ready');
-        return;
-      }
-    }
-
     const found = await discoverBackend(undefined, cached?.url);
     if (found) {
       setApiBaseUrl(found.url, found.serverId);
+      setPhase('ready');
+      void flushOutbox();
+      return;
+    }
+    // Power outage: the tablet boots before the server PC does. Keep the last
+    // known server and run offline until it answers.
+    if (cached?.url) {
+      setApiBaseUrl(cached.url, cached.serverId);
       setPhase('ready');
       return;
     }
@@ -77,36 +73,11 @@ export function BackendProvider({ children }: { children: ReactNode }) {
     void runDiscovery();
   }, [runDiscovery]);
 
-  useEffect(() => {
-    return subscribe(() => {
-      if (getApiBaseUrlOrNull() == null) {
-        startedRef.current = false;
-        void runDiscovery();
-      }
-    });
-  }, [runDiscovery]);
-
   const rescan = useCallback(() => {
-    startedRef.current = false;
     void runDiscovery();
   }, [runDiscovery]);
 
-  // Heartbeat: probe the LAN backend every 15s while ready; two misses → drop it,
-  // which triggers rediscovery via the subscribe() effect above.
-  useEffect(() => {
-    if (phase !== 'ready') return;
-    let misses = 0;
-    const id = setInterval(async () => {
-      const url = getApiBaseUrlOrNull();
-      if (!url) return;
-      const r = await probeUrl(url, 3000);
-      misses = r.ok ? 0 : misses + 1;
-      if (misses >= 2) clearApiBaseUrl();
-    }, 15_000);
-    return () => clearInterval(id);
-  }, [phase]);
-
-  // While the server is missing, retry discovery every 30s so it reconnects on its own.
+  // Fresh install with no server found: retry discovery every 30s.
   useEffect(() => {
     if (phase !== 'needs-manual') return;
     const id = setTimeout(rescan, 30_000);

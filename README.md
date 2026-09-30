@@ -2,12 +2,14 @@
 
 A landscape-only Android tablet kiosk for the JPrime Fitness Gym entrance.
 
-- **Walk-In** — collect name + PH phone, then pay over the counter or via GCash QR (120s timer).
+- **Walk-In** — collect name + PH phone + Terms and Conditions agreement, then pay over the counter or via GCash QR (120s timer).
 - **Membership** — Time In / Time Out via member QR code scanned from the device camera.
 - Every terminal screen posts a record to `POST /api/kiosk/attendance` on the gym's Laravel backend.
 - Backend host is **auto-discovered** on the same Wi-Fi at boot. No hardcoded IP.
 
-> Discovery scans the local `/24` for `GET /api/kiosk/discover` returning `{ "service": "jprimefitness-kiosk-api", ... }`. Result cached in AsyncStorage. Manual IP entry shown if discovery fails.
+> Discovery scans the local `/24` **once at app start** for `GET /api/kiosk/discover` returning `{ "service": "jprimefitness-kiosk-api", ... }`. Result cached in AsyncStorage. If the scan finds nothing, the cached server is used (power outage: tablet boots before the server PC). Manual IP entry only on a fresh install with nothing cached. **Network changed (new server IP)? Restart the device.**
+>
+> **Offline walk-ins:** there is no runtime heartbeat. When a successful walk-in can't reach the server, it's saved on the device (AsyncStorage, SQLite-backed on Android) and replayed — with its original `occurred_at` — at the next boot or after the next request that gets through. Member QR scans are online-only; offline they show "Could not verify with server" and send the member to the front desk.
 
 ## Stack
 
@@ -52,7 +54,7 @@ eas env:push --environment production --path .env
 
 Read at build time in [lib/config.ts](lib/config.ts).
 
-**Backend URL is NOT in config.** It is discovered at boot by [lib/discovery.ts](lib/discovery.ts) (subnet `/24` HTTP probe at port 8001), cached in AsyncStorage by [lib/backend.ts](lib/backend.ts), and gated by [lib/BackendProvider.tsx](lib/BackendProvider.tsx). Discovery probe targets `GET /api/kiosk/discover`, which must return `{ "service": "jprimefitness-kiosk-api", "version": "1", "serverId": "<uuid>" }`. Manual IP entry screen appears if discovery fails.
+**Backend URL is NOT in config.** It is discovered once at boot by [lib/discovery.ts](lib/discovery.ts) (subnet `/24` HTTP probe at port 8001), cached in AsyncStorage by [lib/backend.ts](lib/backend.ts), and gated by [lib/BackendProvider.tsx](lib/BackendProvider.tsx). The offline walk-in outbox lives in [lib/kiosk.ts](lib/kiosk.ts). Discovery probe targets `GET /api/kiosk/discover`, which must return `{ "service": "jprimefitness-kiosk-api", "version": "1", "serverId": "<uuid>" }`. Manual IP entry screen appears if discovery fails.
 
 ## Project layout
 
@@ -61,7 +63,7 @@ app/                      # expo-router screens
 ├── _layout.tsx           # Stack, landscape lock, kiosk lockdown, BackendProvider gate
 ├── index.tsx             # Home (Walk-In / Membership)
 ├── walk-in/
-│   ├── form.tsx          # name + phone (zod-validated)
+│   ├── form.tsx          # name + phone (zod-validated) + terms checkbox
 │   ├── payment-method.tsx
 │   ├── pay-online.tsx    # GCash QR + 120s countdown
 │   └── success.tsx       # counter success
@@ -70,13 +72,13 @@ app/                      # expo-router screens
 │   └── scan.tsx          # camera + QR scanner
 └── result.tsx            # shared success / failed screen
 
-components/               # BrandHeader, PrimaryCard, PrimaryButton, ScannerFrame, CountdownRing, icons
+components/               # BrandHeader, PrimaryCard, PrimaryButton, ScannerFrame, CountdownRing, TermsSheet, icons
 lib/
 ├── config.ts             # runtime settings from .env
 ├── api.ts                # fetch wrapper + token header
-├── kiosk.ts              # API contract types + calls
+├── kiosk.ts              # API contract types + calls + offline walk-in outbox
 ├── session.ts            # idle reset + goHome
-├── discovery.ts          # LAN /24 subnet scan
+├── discovery.ts          # LAN /24 subnet scan (boot only)
 ├── backend.ts            # runtime URL holder + AsyncStorage cache
 ├── BackendProvider.tsx   # boot gate: scanning / ready / needs-manual
 └── kioskLock.ts          # Android Lock Task wrapper
@@ -86,7 +88,7 @@ theme.ts                  # colors / spacing / typography tokens
 
 ## API contract (kiosk → Laravel)
 
-Server stamps `occurred_at` itself. Kiosk does not send timestamps.
+Server stamps `occurred_at` itself. The one exception: a walk-in replayed from the offline outbox sends `occurred_at` (ISO 8601, UTC) — the time it actually happened; the server clamps future values to now.
 
 **`GET /api/kiosk/discover`** — unauthenticated, used by LAN auto-discovery.
 

@@ -8,20 +8,8 @@ type CachedBackend = {
   savedAt: number;
 };
 
+// Set once at boot by BackendProvider; a network change needs a device restart.
 let currentBaseUrl: string | null = null;
-let lastInvalidatedAt = 0;
-const INVALIDATE_DEBOUNCE_MS = 30_000;
-
-const listeners = new Set<() => void>();
-
-function notify() {
-  for (const l of listeners) l();
-}
-
-export function subscribe(fn: () => void): () => void {
-  listeners.add(fn);
-  return () => listeners.delete(fn);
-}
 
 export function getApiBaseUrl(): string {
   if (!currentBaseUrl) {
@@ -30,23 +18,9 @@ export function getApiBaseUrl(): string {
   return currentBaseUrl;
 }
 
-export function getApiBaseUrlOrNull(): string | null {
-  return currentBaseUrl;
-}
-
 export function setApiBaseUrl(url: string, serverId?: string): void {
   currentBaseUrl = normalizeUrl(url);
   void persist({ url: currentBaseUrl, serverId, savedAt: Date.now() });
-  notify();
-}
-
-export function clearApiBaseUrl(): void {
-  const now = Date.now();
-  if (now - lastInvalidatedAt < INVALIDATE_DEBOUNCE_MS) return;
-  lastInvalidatedAt = now;
-  currentBaseUrl = null;
-  void AsyncStorage.removeItem(STORAGE_KEY);
-  notify();
 }
 
 export async function loadCached(): Promise<CachedBackend | null> {

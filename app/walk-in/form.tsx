@@ -4,7 +4,9 @@ import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput,
 import { SafeAreaView } from "react-native-safe-area-context";
 import { z } from "zod";
 import { BrandHeader } from "@/components/BrandHeader";
+import { CheckIcon } from "@/components/icons";
 import { PrimaryButton } from "@/components/PrimaryButton";
+import { TermsSheet } from "@/components/TermsSheet";
 import { DISCOUNT_LABELS, DiscountType } from "@/lib/kiosk";
 import { colors, radius, spacing, typography } from "@/theme";
 
@@ -26,16 +28,20 @@ export default function WalkInFormScreen() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [discount, setDiscount] = useState<DiscountChoice>("");
-  const [errors, setErrors] = useState<{ name?: string; phone?: string }>({});
+  const [agreed, setAgreed] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
+  const [errors, setErrors] = useState<{ name?: string; phone?: string; terms?: string }>({});
   const phoneRef = useRef<TextInput>(null);
 
   const onContinue = () => {
     const parsed = schema.safeParse({ name, phone });
-    if (!parsed.success) {
-      const flat = parsed.error.flatten().fieldErrors;
+    const terms = agreed ? undefined : "Please accept the Terms and Conditions to continue.";
+    if (!parsed.success || terms) {
+      const flat = parsed.success ? {} : parsed.error.flatten().fieldErrors;
       setErrors({
         name: flat.name?.[0],
         phone: flat.phone?.[0],
+        terms,
       });
       return;
     }
@@ -81,6 +87,19 @@ export default function WalkInFormScreen() {
                 })}
               </View>
             </View>
+
+            <View>
+              <Pressable onPress={() => setAgreed((v) => !v)} style={styles.termsRow} testID="terms-checkbox">
+                <View style={[styles.checkbox, agreed && styles.checkboxOn]}>{agreed ? <CheckIcon size={20} color={colors.white} /> : null}</View>
+                <Text style={styles.termsLabel}>
+                  I have read and agree to the{" "}
+                  <Text style={styles.termsLink} onPress={() => setShowTerms(true)}>
+                    Terms and Conditions
+                  </Text>
+                </Text>
+              </Pressable>
+              {errors.terms ? <Text style={styles.fieldError}>{errors.terms}</Text> : null}
+            </View>
           </View>
 
           <View style={styles.actions}>
@@ -89,6 +108,15 @@ export default function WalkInFormScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
+      {showTerms ? (
+        <TermsSheet
+          onAgree={() => {
+            setAgreed(true);
+            setShowTerms(false);
+          }}
+          onClose={() => setShowTerms(false)}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -211,6 +239,36 @@ const styles = StyleSheet.create({
   },
   discountSubActive: {
     color: colors.crimson,
+  },
+  termsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    minHeight: 48,
+  },
+  checkbox: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.sm,
+    borderWidth: 2,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkboxOn: {
+    borderColor: colors.crimson,
+    backgroundColor: colors.crimson,
+  },
+  termsLabel: {
+    ...typography.body,
+    color: colors.ink,
+    flexShrink: 1,
+  },
+  termsLink: {
+    color: colors.crimson,
+    fontWeight: "700",
+    textDecorationLine: "underline",
   },
   actions: {
     flexDirection: "row",

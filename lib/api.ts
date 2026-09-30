@@ -1,4 +1,4 @@
-import { clearApiBaseUrl, getApiBaseUrl } from './backend';
+import { getApiBaseUrl } from './backend';
 import { config } from './config';
 
 export class ApiError extends Error {
@@ -43,9 +43,6 @@ async function request<T>(
       signal: ctl.signal,
     });
   } catch (e) {
-    // Only invalidate the discovered LAN backend on transport failure — a live-URL
-    // failure shouldn't kick the kiosk back into rediscovery.
-    if (!opts?.baseUrl) clearApiBaseUrl();
     throw ctl.signal.aborted ? new Error('Server did not respond in time.') : e;
   } finally {
     clearTimeout(timer);
