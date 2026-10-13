@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
+import { useRef } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BrandHeader } from "@/components/BrandHeader";
@@ -12,7 +13,13 @@ export default function PaymentMethodScreen() {
   const { name, phone, discount_type } = useLocalSearchParams<{ name: string; phone: string; discount_type?: string }>();
   const discount = parseDiscount(discount_type) ?? "";
 
+  // The cards stay tappable while the next screen fades in. A second tap replaced that screen with
+  // a fresh one, and every mount creates its own payment and posts its own attendance.
+  const chosen = useRef(false);
+
   const choose = (method: "counter" | "online") => {
+    if (chosen.current) return;
+    chosen.current = true;
     if (method === "counter") {
       router.replace({
         pathname: "/walk-in/success",
